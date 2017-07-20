@@ -21,7 +21,7 @@ library(data.table)
 # scales
 # rsdmx
 
-files_location <- 'C:/Users/mongeau/Dropbox/FAO/Shiny/files/'
+files_location <- normalizePath("./files")
 
 lock_name              <- paste0(files_location, 'file.lock')
 fcl_2_cpc_file         <- paste0(files_location, 'fcl_2_cpc.csv')
@@ -37,7 +37,7 @@ item_names_file        <- paste0(files_location, 'fao_cpc_names.csv')
 db_file                <- paste0(files_location, 'db_save_20170628.rds')
 help_file              <- paste0(files_location, 'help.Rmd')
 
-page_flows <- 'http://campbells-fao:3838/mongeau/flows/'
+page_flows <- 'http://hqlprsws1.hq.un.fao.org/mongeau/flows/'
 
 
 # nameData("trade", "completed_tf_cpc_m49", db %>% select(geographicAreaM49Reporter) %>% distinct() %>% data.table::data.table(), except = "timePointYears")
