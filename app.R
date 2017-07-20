@@ -21,7 +21,7 @@ library(data.table)
 # scales
 # rsdmx
 
-files_location <- normalizePath("./files/")
+files_location <- paste0(normalizePath("./files/"), "/")
 
 lock_name              <- paste0(files_location, 'file.lock')
 fcl_2_cpc_file         <- paste0(files_location, 'fcl_2_cpc.csv')
