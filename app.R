@@ -37,7 +37,7 @@ item_names_file        <- paste0(files_location, 'fao_cpc_names.csv')
 db_file                <- paste0(files_location, 'db_save_20170628.rds')
 help_file              <- paste0(files_location, 'help.Rmd')
 
-page_flows <- 'http://hqlprsws1.hq.un.fao.org/mongeau/flows/'
+page_flows <- 'http://hqlprsws1.hq.un.fao.org/flows/'
 
 
 # nameData("trade", "completed_tf_cpc_m49", db %>% select(geographicAreaM49Reporter) %>% distinct() %>% data.table::data.table(), except = "timePointYears")
