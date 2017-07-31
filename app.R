@@ -425,6 +425,10 @@ ui <- function(request) {
         ),
         mainPanel(
           #plotlyOutput("plotUV"),
+          conditionalPanel(
+            condition = 'input.go_db > 0',
+            uiOutput("units_measurement")
+          ),
           plotOutput("plotUV", hover = "plotUV_hover"),
           uiOutput("plotUV_coords"),
           #verbatimTextOutput("test"),
@@ -731,6 +735,9 @@ server <- function(input, output, session) {
 
       res[is.na(corrected), corrected := FALSE]
 
+      res$qty_mirror_corr <- NA_real_
+      res$value_mirror_corr <- NA_real_
+
       ## When the partner is going to be corrected, it should have
       ## 'E' inside flag_value if it's a mirror flow (needs correction)
       cond <- res$corrected & grepl('E', res$flag_value_mirror)
@@ -740,27 +747,33 @@ server <- function(input, output, session) {
       res[cond & !is.na(value_corr), value_mirror_corr := as.numeric(ifelse(flow == 2L, value_corr*1.12, value_corr/1.12))]
 
       # Flag NEEDS CORRECTION
-      res[!is.na(corrected) & !is.na(value_corr), c('flag_value', 'flag_value_mirror') := 'XXX']
-      res[!is.na(corrected) & !is.na(qty_corr),   c('flag_qty', 'flag_qty_mirror')     := 'XXX']
+      res[!is.na(corrected) & !is.na(value_corr), flag_value        := 'XXX']
+      res[!is.na(corrected) & !is.na(qty_corr),   flag_qty          := 'XXX']
+      res[cond & !is.na(value_corr),              flag_value_mirror := 'XXX']
+      res[cond & !is.na(qty_corr),                flag_qty_mirror   := 'XXX']
 
-      res[flag_value != 'XXX', c('value_corr', 'value_mirror_corr') := list(value, value_mirror)]
-      res[flag_qty   != 'XXX', c('qty_corr', 'qty_mirror_corr')     := list(qty, qty_mirror)]
+      res[flag_value        != 'XXX', value_corr := value]
+      res[flag_qty          != 'XXX', qty_corr := qty]
+      res[flag_value_mirror != 'XXX', value_mirror_corr := value_mirror]
+      res[flag_qty_mirror   != 'XXX', qty_mirror_corr := qty_mirror]
 
+     res <- res %>%
+       mutate(
+         qty_orig = qty,
+         value_orig = value,
+         unit_value_orig = value/qty,
+         qty_mirror_orig = qty_mirror,
+         value_mirror_orig = value_mirror,
+         unit_value_mirror_orit = value_mirror/qty_mirror,
+         qty = qty_corr,
+         value = value_corr,
+         unit_value = value_corr/qty_corr,
+         qty_mirror = qty_mirror_corr,
+         value_mirror = value_mirror_corr,
+         unit_value_mirror = value_mirror_corr/qty_mirror_corr
+       ) %>%
+       tbl_df()
 
-
-      res[, c(
-              'qty_orig', 'value_orig', 'unit_value_orig',
-              'qty_mirror_orig', 'value_mirror_orig', 'unit_value_mirror_orig',
-              'qty', 'value', 'unit_value',
-              'qty_mirror', 'value_mirror', 'unit_value_mirror'
-            ) := list(
-              qty, value, value/qty,
-              qty_mirror, value_mirror, value_mirror/qty_mirror,
-              qty_corr, value_corr, value_corr/qty_corr,
-              qty_mirror_corr, value_mirror_corr, value_mirror_corr/qty_mirror_corr
-            )]
-
-      res <- res %>% tbl_df
     } else {
       res$corrected <- FALSE
     }
@@ -1166,6 +1179,19 @@ server <- function(input, output, session) {
       }
 
     })
+  })
+
+  output$units_measurement <- renderUI({
+    unqty <- unique(datasetInput()$data$qty_unit)
+    if (unqty == 't') {
+      unqty <- 'tonnes'
+    } else if (is.na(unqty)) {
+      unqty <- 'unspecified (value only?)'
+    }
+
+    if (length(unqty) != 0) {
+      HTML(paste('<p><strong>Values are expressed in 1,000 US dollars, quantities in', unqty, 'and unit values in 1,000 US dollars per tonne.</strong></p>'))
+    }
   })
 
   output$dup_corr <- renderText({
@@ -1961,17 +1987,18 @@ server <- function(input, output, session) {
 
      isolate(
        datasetInput()$data %>%
-         #select(
-         #  timePointYears,
-         #  qty,
-         #  value,
-         #  flag_qty,
-         #  flag_value,
-         #  unit_value,
-         #  median,
-         #  median_world,
-         #  movav_unit_value
-         #) %>%
+         select(
+           year = timePointYears,
+           qty,
+           value,
+           flag_qty,
+           flag_value,
+           unit_value,
+           qty_unit,
+           median,
+           median_world,
+           movav_unit_value
+         ) %>%
          mutate(
            qty              = formatNum(qty),
            value            = formatNum(value),
@@ -1979,8 +2006,7 @@ server <- function(input, output, session) {
            median           = formatNum(median),
            median_world     = formatNum(median_world),
            movav_unit_value = formatNum(movav_unit_value)
-         ) %>%
-         rename(year = timePointYears)
+         )
      )
 
    }, align = 'r')
@@ -1992,14 +2018,15 @@ server <- function(input, output, session) {
 
      isolate(
        datasetInput()$data %>%
-         #select(
-         #  year = timePointYears,
-         #  qty_mirror,
-         #  value_mirror,
-         #  flag_qty_mirror,
-         #  flag_value_mirror,
-         #  unit_value_mirror
-         #) %>%
+         select(
+           year = timePointYears,
+           qty_mirror,
+           value_mirror,
+           flag_qty_mirror,
+           flag_value_mirror,
+           unit_value_mirror,
+           qty_unit
+         ) %>%
          mutate(
            qty_mirror        = formatNum(qty_mirror),
            value_mirror      = formatNum(value_mirror),
