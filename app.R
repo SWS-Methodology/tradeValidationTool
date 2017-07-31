@@ -34,7 +34,7 @@ hsfclmap3_file         <- paste0(files_location, 'hsfclmap3.RData')
 reporter_names_file    <- paste0(files_location, 'fao_m49_reporter_names.csv')
 partner_names_file     <- paste0(files_location, 'fao_m49_partner_names.csv')
 item_names_file        <- paste0(files_location, 'fao_cpc_names.csv')
-db_file                <- paste0(files_location, 'db_save_20170628.rds')
+db_file                <- paste0(files_location, 'db.rds')
 help_file              <- paste0(files_location, 'help.Rmd')
 element_units_file     <- paste0(files_location, 'fao_item_units.csv')
 
