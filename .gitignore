@@ -1,3 +1,4 @@
 *.sw[a-z]
 files/db.rds
 files/corrections_table.rds
+files/corrections_table_?[0-9]*.rds
