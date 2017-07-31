@@ -36,6 +36,7 @@ partner_names_file     <- paste0(files_location, 'fao_m49_partner_names.csv')
 item_names_file        <- paste0(files_location, 'fao_cpc_names.csv')
 db_file                <- paste0(files_location, 'db_save_20170628.rds')
 help_file              <- paste0(files_location, 'help.Rmd')
+element_units_file     <- paste0(files_location, 'fao_item_units.csv')
 
 page_flows <- 'http://hqlprsws1.hq.un.fao.org/flows/'
 
@@ -46,8 +47,11 @@ reporter_names <- read.csv(reporter_names_file, colClasses = "character")
 partner_names <- read.csv(partner_names_file, colClasses = "character")
 item_names <- read.csv(item_names_file, colClasses = "character")
 fcl_codes <- read_csv(fcl_2_cpc_file)$fcl
+element_units <- read_csv(element_units_file)
 
 db <- readRDS(file = db_file) %>% tbl_df()
+
+db <- left_join(db, element_units, by = 'measuredItemCPC')
 
 ### XXX the out* variables should be integers
 db <- db %>%
@@ -591,7 +595,8 @@ server <- function(input, output, session) {
         value,
         unit_value,
         flag_qty,
-        flag_value
+        flag_value,
+        qty_unit
       ) %>%
       filter(
         flow      == .flow,
@@ -1294,6 +1299,7 @@ server <- function(input, output, session) {
           qty,
           value,
           unit_value,
+          qty_unit,
           ma,
           perc.value,
           perc.qty,
