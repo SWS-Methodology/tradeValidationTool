@@ -566,12 +566,12 @@ ui <- function(request) {
    tabPanel('Help', 
      HTML(markdown::markdownToHTML(help_file, fragment.only = TRUE))
    ),
-   tabPanel('test_qty', htmlOutput("test_qty")),
-   tabPanel('test_value', htmlOutput("test_value")),
-   tabPanel('test_uv', htmlOutput("test_uv")),
-   tabPanel('test_all', htmlOutput("test_all")),
-   tabPanel('test_s', tableOutput("test_s")),
-   tabPanel('test', htmlOutput("test2"))
+   #tabPanel('test_qty', htmlOutput("test_qty")),
+   #tabPanel('test_value', htmlOutput("test_value")),
+   #tabPanel('test_uv', htmlOutput("test_uv")),
+   #tabPanel('test_all', htmlOutput("test_all")),
+   #tabPanel('test_s', tableOutput("test_s")),
+   #tabPanel('test', htmlOutput("test2"))
    #tabPanel('test', conditionalPanel(condition = paste0('["', paste(valid_analysts, collapse='", "'), '"]', '.indexOf(input.username) !== -1'), tableOutput("test2")))
   )
 }
@@ -1486,60 +1486,60 @@ server <- function(input, output, session) {
 
   #observeEvent(input$okHSdata, removeModal())
 
-  output$test_qty   <- renderTable(values$imputed_qty)
-  output$test_value <- renderTable(values$imputed_value)
-  output$test_uv    <- renderTable(values$imputed_uv)
-  output$test_all   <- renderTable(bind_rows(values$imputed_value, values$imputed_qty))
+  #output$test_qty   <- renderTable(values$imputed_qty)
+  #output$test_value <- renderTable(values$imputed_value)
+  #output$test_uv    <- renderTable(values$imputed_uv)
+  #output$test_all   <- renderTable(bind_rows(values$imputed_value, values$imputed_qty))
 
-  output$test2 <- renderUI({
-      comtrade_query <- paste0(
-        'https://comtrade.un.org/api/get?max=500&type=C&freq=A&px=HS&ps=all&r=',
-        input$reporter_comtrade,
-        '&p=',
-        input$partner_comtrade,
-        '&rg=',
-        input$flow_comtrade,
-        '&cc=',
-        input$item_comtrade
-      )
+  #output$test2 <- renderUI({
+  #    comtrade_query <- paste0(
+  #      'https://comtrade.un.org/api/get?max=500&type=C&freq=A&px=HS&ps=all&r=',
+  #      input$reporter_comtrade,
+  #      '&p=',
+  #      input$partner_comtrade,
+  #      '&rg=',
+  #      input$flow_comtrade,
+  #      '&cc=',
+  #      input$item_comtrade
+  #    )
 
-    HTML(paste("Used for debugging:",
-      '<br>',
-      'USERNAME =',
-      USERNAME,
-      '<br>',
-      'values$username =',
-      values$username,
-      '<br>',
-      'Valid analyst =',
-      values$username %in% valid_analysts,
-      '<br>',
-      'VALIDUSER =',
-      VALIDUSER,
-      '<br>',
-      'input$gousername =',
-      input$gousername,
-      '<br>',
-      'input$go =',
-      input$go,
-      '<br>',
-      'input$go_db =',
-      input$go_db,
-      '<br>',
-      'nrow(values$mydb) =',
-      nrow(values$mydb),
-      '<br>',
-      'is.null(values$mydb) =',
-      is.null(values$mydb),
-      '<br>',
-      'nrow(values$corrections) =',
-      nrow(values$corrections),
-      '<br>',
-      'input$year2correct =',
-      input$year2correct,
-      'comtrade query =',
-      paste0('<a href="', comtrade_query, '">', comtrade_query, '</a>')))
-  })
+  #  HTML(paste("Used for debugging:",
+  #    '<br>',
+  #    'USERNAME =',
+  #    USERNAME,
+  #    '<br>',
+  #    'values$username =',
+  #    values$username,
+  #    '<br>',
+  #    'Valid analyst =',
+  #    values$username %in% valid_analysts,
+  #    '<br>',
+  #    'VALIDUSER =',
+  #    VALIDUSER,
+  #    '<br>',
+  #    'input$gousername =',
+  #    input$gousername,
+  #    '<br>',
+  #    'input$go =',
+  #    input$go,
+  #    '<br>',
+  #    'input$go_db =',
+  #    input$go_db,
+  #    '<br>',
+  #    'nrow(values$mydb) =',
+  #    nrow(values$mydb),
+  #    '<br>',
+  #    'is.null(values$mydb) =',
+  #    is.null(values$mydb),
+  #    '<br>',
+  #    'nrow(values$corrections) =',
+  #    nrow(values$corrections),
+  #    '<br>',
+  #    'input$year2correct =',
+  #    input$year2correct,
+  #    'comtrade query =',
+  #    paste0('<a href="', comtrade_query, '">', comtrade_query, '</a>')))
+  #})
 
   #observeEvent(input$okCorrection, {
   #            removeModal()
