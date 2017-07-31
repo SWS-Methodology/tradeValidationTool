@@ -176,6 +176,8 @@ valid_analysts <- c(
   'christian.mongeau',
   'sebastian.campbell',
   'bruno.vidigal',
+  'kenneth.basham',
+  'carlo.delbello',
   valid_supervisors
 )
 
