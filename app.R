@@ -571,8 +571,8 @@ ui <- function(request) {
    #tabPanel('test_uv', htmlOutput("test_uv")),
    #tabPanel('test_all', htmlOutput("test_all")),
    #tabPanel('test_s', tableOutput("test_s")),
-   #tabPanel('test', htmlOutput("test2"))
-   #tabPanel('test', conditionalPanel(condition = paste0('["', paste(valid_analysts, collapse='", "'), '"]', '.indexOf(input.username) !== -1'), tableOutput("test2")))
+   tabPanel('debug', htmlOutput("debug"))
+   #tabPanel('test', conditionalPanel(condition = paste0('["', paste(valid_analysts, collapse='", "'), '"]', '.indexOf(input.username) !== -1'), tableOutput("debug")))
   )
 }
 
@@ -1491,59 +1491,59 @@ server <- function(input, output, session) {
   #output$test_uv    <- renderTable(values$imputed_uv)
   #output$test_all   <- renderTable(bind_rows(values$imputed_value, values$imputed_qty))
 
-  #output$test2 <- renderUI({
-  #    comtrade_query <- paste0(
-  #      'https://comtrade.un.org/api/get?max=500&type=C&freq=A&px=HS&ps=all&r=',
-  #      input$reporter_comtrade,
-  #      '&p=',
-  #      input$partner_comtrade,
-  #      '&rg=',
-  #      input$flow_comtrade,
-  #      '&cc=',
-  #      input$item_comtrade
-  #    )
+  output$debug <- renderUI({
+      comtrade_query <- paste0(
+        'https://comtrade.un.org/api/get?max=500&type=C&freq=A&px=HS&ps=all&r=',
+        input$reporter_comtrade,
+        '&p=',
+        input$partner_comtrade,
+        '&rg=',
+        input$flow_comtrade,
+        '&cc=',
+        input$item_comtrade
+      )
 
-  #  HTML(paste("Used for debugging:",
-  #    '<br>',
-  #    'USERNAME =',
-  #    USERNAME,
-  #    '<br>',
-  #    'values$username =',
-  #    values$username,
-  #    '<br>',
-  #    'Valid analyst =',
-  #    values$username %in% valid_analysts,
-  #    '<br>',
-  #    'VALIDUSER =',
-  #    VALIDUSER,
-  #    '<br>',
-  #    'input$gousername =',
-  #    input$gousername,
-  #    '<br>',
-  #    'input$go =',
-  #    input$go,
-  #    '<br>',
-  #    'input$go_db =',
-  #    input$go_db,
-  #    '<br>',
-  #    'nrow(values$mydb) =',
-  #    nrow(values$mydb),
-  #    '<br>',
-  #    'is.null(values$mydb) =',
-  #    is.null(values$mydb),
-  #    '<br>',
-  #    'nrow(values$corrections) =',
-  #    nrow(values$corrections),
-  #    '<br>',
-  #    'input$year2correct =',
-  #    input$year2correct,
-  #    'comtrade query =',
-  #    paste0('<a href="', comtrade_query, '">', comtrade_query, '</a>')))
-  #})
+    HTML(paste("Used for debugging:",
+      '<br>',
+      'USERNAME =',
+      USERNAME,
+      '<br>',
+      'values$username =',
+      values$username,
+      '<br>',
+      'Valid analyst =',
+      values$username %in% valid_analysts,
+      '<br>',
+      'VALIDUSER =',
+      VALIDUSER,
+      '<br>',
+      'input$gousername =',
+      input$gousername,
+      '<br>',
+      'input$go =',
+      input$go,
+      '<br>',
+      'input$go_db =',
+      input$go_db,
+      '<br>',
+      'nrow(values$mydb) =',
+      nrow(values$mydb),
+      '<br>',
+      'is.null(values$mydb) =',
+      is.null(values$mydb),
+      '<br>',
+      'nrow(values$corrections) =',
+      nrow(values$corrections),
+      '<br>',
+      'input$year2correct =',
+      input$year2correct,
+      'comtrade query =',
+      paste0('<a href="', comtrade_query, '">', comtrade_query, '</a>')))
+  })
 
   #observeEvent(input$okCorrection, {
   #            removeModal()
-  #            output$test2 <- renderText('xxx')
+  #            output$debug <- renderText('xxx')
   #            showModal(modalDialog(
   #                    title = "Correction saved",
   #                    "The correction has bees succesfully saved."
