@@ -25,6 +25,8 @@ share_drive <- yaml::yaml.load_file('config.yml')$share_drive
 files_location <- paste0(normalizePath("./files/"), "/")
 persistent_files <- file.path(share_drive, 'trade', 'validation_tool_files')
 
+app_mode <- yaml::yaml.load_file('config.yml')$mode
+
 lock_name              <- paste0(files_location, 'file.lock')
 fcl_2_cpc_file         <- paste0(files_location, 'fcl_2_cpc.csv')
 comtrade_partner_file  <- paste0(files_location, 'partnerAreas.json')
@@ -39,10 +41,16 @@ help_file              <- paste0(files_location, 'help.Rmd')
 element_units_file     <- paste0(files_location, 'fao_item_units.csv')
 
 db_file                <- file.path(persistent_files, 'db.rds')
-corrections_file       <- file.path(persistent_files, 'corrections_table.rds')
+
+if (app_mode == 'production') {
+  corrections_file <- file.path(persistent_files, 'corrections_table.rds')
+} else if (app_mode == 'test') {
+  corrections_file <- file.path(persistent_files, 'test', 'corrections_table.rds')
+} else {
+  stop('The "mode" should be either "test" or "production"')
+}
 
 page_flows <- 'http://hqlprsws1.hq.un.fao.org/flows/'
-
 
 # nameData("trade", "completed_tf_cpc_m49", db %>% select(geographicAreaM49Reporter) %>% distinct() %>% data.table::data.table(), except = "timePointYears")
 reporter_names <- read.csv(reporter_names_file, colClasses = "character")
@@ -834,7 +842,7 @@ server <- function(input, output, session) {
   }
 
   corrections_table <- readRDS(corrections_file)
-  saveRDS(corrections_table, paste0(files_location, 'corrections_table_', format(Sys.time(), '%Y%m%d%H%M'), '.rds'))
+  saveRDS(corrections_table, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M'), '\\1'), corrections_file))
 
   USERNAME <<- NA
 

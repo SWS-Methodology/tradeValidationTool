@@ -1,2 +1,4 @@
 share_drive:
   Name of the "share drive" folder
+mode:
+  either test or production
