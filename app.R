@@ -162,13 +162,14 @@ types_correction <- c(
 )
 
 valid_supervisors <- c(
+  'katherine.baldwin',
   'carola.fabi',
   'tayyib.salar',
-  'katherine.baldwin',
   'claudia.devita'
 )
 
 valid_analysts <- c(
+  valid_supervisors,
   'user.name',
   'marcella.canero',
   'rachele.brivio',
@@ -177,8 +178,7 @@ valid_analysts <- c(
   'sebastian.campbell',
   'bruno.vidigal',
   'kenneth.basham',
-  'carlo.delbello',
-  valid_supervisors
+  'carlo.delbello'
 )
 
 formatNum <- function(x) {
@@ -321,6 +321,12 @@ ui <- function(request) {
             selectInput("year2correct",
               "Choose a year to correct:",
               years)
+          ),
+          conditionalPanel(
+            condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
+            selectInput("choose_analyst",
+              "Analyst name:",
+              c('', valid_analysts))
           ),
           conditionalPanel(
             condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
@@ -1142,6 +1148,7 @@ server <- function(input, output, session) {
   observeEvent(input$gousername, {
     if (input$username %in% valid_analysts) {
       values$username <- input$username
+      session$userData$username <- input$username
       USERNAME <<- input$username
       VALIDUSER <<- TRUE
     } else {
@@ -1449,25 +1456,34 @@ server <- function(input, output, session) {
 
 
   observeEvent(input$confirm_correction, {
-    if (input$choose_correction == 'Expert knowledge' & input$note_by_expert == '') {
-      showModal(
-        modalDialog(
-          title = "Missing comment",
-          "A comment/note is required."
-        )
-      )
-    } else {
-      showModal(
-        modalDialog(
-          title = "Confirm correction",
-            "By clicking OK you confirm that the correction should be
-            applied and it will be saved.",
-          footer = tagList(
-            modalButton("Cancel"),
-            actionButton("okCorrection", "OK")
+    if (input$choose_analyst == '') {
+        showModal(
+          modalDialog(
+            title = "Missing user name",
+            "Your user name is required."
           )
         )
-      )
+    } else {
+      if (input$choose_correction == 'Expert knowledge' & input$note_by_expert == '') {
+        showModal(
+          modalDialog(
+            title = "Missing comment",
+            "A comment/note is required."
+          )
+        )
+      } else {
+        showModal(
+          modalDialog(
+            title = "Confirm correction",
+              "By clicking OK you confirm that the correction should be
+              applied and it will be saved.",
+            footer = tagList(
+              modalButton("Cancel"),
+              actionButton("okCorrection", "OK")
+            )
+          )
+        )
+      }
     }
   })
 
@@ -1535,8 +1551,12 @@ server <- function(input, output, session) {
       'nrow(values$corrections) =',
       nrow(values$corrections),
       '<br>',
+      'session$userData$username',
+      session$userData$username,
+      '<br>',
       'input$year2correct =',
       input$year2correct,
+      '<br>',
       'comtrade query =',
       paste0('<a href="', comtrade_query, '">', comtrade_query, '</a>')))
   })
@@ -1606,7 +1626,7 @@ server <- function(input, output, session) {
         correction_note  = values$correct_note,
         note_analyst     = values$analyst_note,
         note_supervisor  = NA,
-        name_analyst     = values$username,
+        name_analyst     = input$choose_analyst,
         name_supervisor  = NA,
         date_correction  = format(Sys.Date(), "%Y-%m-%d"),
         date_validation  = NA
