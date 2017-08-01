@@ -2032,8 +2032,10 @@ server <- function(input, output, session) {
            unit_value       = formatNum(unit_value),
            median           = formatNum(median),
            median_world     = formatNum(median_world),
-           movav_unit_value = formatNum(movav_unit_value)
-         )
+           movav_unit_value = formatNum(movav_unit_value),
+           qty_unit         = if_else(qty_unit == 't', 'tonnes', qty_unit, '(value only?)')
+         ) %>%
+         rename(`value (1,000$)` = value)
      )
 
    }, align = 'r')
@@ -2046,19 +2048,21 @@ server <- function(input, output, session) {
      isolate(
        datasetInput()$data %>%
          select(
-           year = timePointYears,
-           qty_mirror,
-           value_mirror,
-           flag_qty_mirror,
-           flag_value_mirror,
-           unit_value_mirror,
+           year       = timePointYears,
+           qty        = qty_mirror,
+           value      = value_mirror,
+           flag_qty   = flag_qty_mirror,
+           flag_value = flag_value_mirror,
+           unit_value = unit_value_mirror,
            qty_unit
          ) %>%
          mutate(
-           qty_mirror        = formatNum(qty_mirror),
-           value_mirror      = formatNum(value_mirror),
-           unit_value_mirror = formatNum(unit_value_mirror)
-         )
+           qty        = formatNum(qty),
+           value      = formatNum(value),
+           unit_value = formatNum(unit_value),
+           qty_unit   = if_else(qty_unit == 't', 'tonnes', qty_unit, '(value only?)')
+         ) %>%
+         rename(`value (1,000$)` = value)
      )
 
    }, align = 'r')
