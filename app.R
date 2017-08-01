@@ -1332,7 +1332,7 @@ server <- function(input, output, session) {
           flow,
           year = timePointYears,
           qty,
-          value,
+          `value (1,000$)` = value,
           unit_value,
           qty_unit,
           ma,
@@ -1350,7 +1350,8 @@ server <- function(input, output, session) {
           unit_value = round(unit_value, 3),
           ma = round(ma, 3),
           flow = ifelse(flow == 1, 'import', 'export'),
-          corrected = if_else(corrected, corrected, FALSE, FALSE)
+          corrected = if_else(corrected, corrected, FALSE, FALSE),
+          qty_unit = if_else(qty_unit == 't', 'tonnes', qty_unit, '(value only?)')
         ) %>%
         DT::datatable(
           #### #callback = DT::JS(
@@ -1374,7 +1375,7 @@ server <- function(input, output, session) {
           #$("#partner")[0].textContent = "Colombia";
           #$("#partner option")[0].value = "Colombia";
         ) %>%
-        DT::formatCurrency(c('qty', 'value'), digits = 3, currency = '') %>%
+        DT::formatCurrency(c('qty', 'value (1,000$)'), digits = 3, currency = '') %>%
         DT::formatCurrency(c('unit_value', 'ma'), digits = 3, currency = '') %>%
         DT::formatPercentage(c('perc.value', 'perc.qty'), 1)
 
