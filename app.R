@@ -434,7 +434,7 @@ ui <- function(request) {
         mainPanel(
           #plotlyOutput("plotUV"),
           conditionalPanel(
-            condition = 'input.go_db > 0',
+            condition = 'input.go > 0',
             uiOutput("units_measurement")
           ),
           plotOutput("plotUV", hover = "plotUV_hover"),
@@ -1198,6 +1198,7 @@ server <- function(input, output, session) {
       unqty <- 'unspecified (value only?)'
     }
 
+    # FIXME this actually doen't work: used a conditionalPanel
     if (length(unqty) != 0) {
       HTML(paste('<p><strong>Values are expressed in 1,000 US dollars, quantities in', unqty, 'and unit values in 1,000 US dollars per tonne.</strong></p>'))
     }
