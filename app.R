@@ -21,11 +21,12 @@ library(data.table)
 # scales
 # rsdmx
 
+share_drive <- yaml::yaml.load_file('config.yml')$share_drive
 files_location <- paste0(normalizePath("./files/"), "/")
+persistent_files <- file.path(share_drive, 'trade', 'validation_tool_files')
 
 lock_name              <- paste0(files_location, 'file.lock')
 fcl_2_cpc_file         <- paste0(files_location, 'fcl_2_cpc.csv')
-corrections_file       <- paste0(files_location, 'corrections_table.rds')
 comtrade_partner_file  <- paste0(files_location, 'partnerAreas.json')
 comtrade_reporter_file <- paste0(files_location, 'reporterAreas.json')
 comtrade_classif_file  <- paste0(files_location, 'classificationHS.json')
@@ -34,9 +35,11 @@ hsfclmap3_file         <- paste0(files_location, 'hsfclmap3.RData')
 reporter_names_file    <- paste0(files_location, 'fao_m49_reporter_names.csv')
 partner_names_file     <- paste0(files_location, 'fao_m49_partner_names.csv')
 item_names_file        <- paste0(files_location, 'fao_cpc_names.csv')
-db_file                <- paste0(files_location, 'db.rds')
 help_file              <- paste0(files_location, 'help.Rmd')
 element_units_file     <- paste0(files_location, 'fao_item_units.csv')
+
+db_file                <- file.path(persistent_files, 'db.rds')
+corrections_file       <- file.path(persistent_files, 'corrections_table.rds')
 
 page_flows <- 'http://hqlprsws1.hq.un.fao.org/flows/'
 
