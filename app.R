@@ -817,14 +817,17 @@ server <- function(input, output, session) {
 
 
 
-  fun_plot <- function(data) {
-    data %>%
+  fun_plot <- function(data, out = FALSE) {
+    g <- data %>%
       ggplot(aes(x = timePointYears, group = variable)) +
         geom_line(aes(y = value, colour = variable)) +
         geom_point(aes(y = value, colour = variable), size = 3) +
-        #geom_point(aes(y = out), size = 4) +
         geom_ribbon(aes(ymin = 0.5 * reference, ymax = 1.5 * reference), alpha = 0.05) +
         theme(legend.position = "bottom", axis.title.y = element_blank())
+
+    if (out) g <- g + geom_point(aes(y = out), size = 4)
+
+    return(g)
   }
 
   corrections_table <- readRDS(corrections_file)
@@ -2261,7 +2264,7 @@ server <- function(input, output, session) {
          values$test_s <- s
 
          myplotUV <- s %>%
-           fun_plot() +
+           fun_plot(out = TRUE) +
              scale_size_manual(
                values = c(
                  'unit_value' = 2,
@@ -2309,7 +2312,7 @@ server <- function(input, output, session) {
              )
 
          myplotUV_imputed <- d_imputed %>%
-           fun_plot() +
+           fun_plot(out = TRUE) +
              scale_size_manual(values = c('unit_value' = 2, 'median' = 1.5, 'median_world' = 1, 'movav_unit_value' = 1.5, 'unit_value_mirror' = 1)) +
              scale_colour_manual(values = c('unit_value' = 'red', 'median' = 'yellow', 'median_world' = 'green', 'movav_unit_value' = 'orange', 'unit_value_mirror' = 'purple')) +
              labs(title = 'Unit value', subtitle = paste('Reporter:', input$reporter, '- Partner:', input$partner, '- Item:', input$item)) #+
@@ -2398,7 +2401,7 @@ server <- function(input, output, session) {
              )
 
          myplotUV_imputed <- d_imputed %>%
-           fun_plot() +
+           fun_plot(out = TRUE) +
              scale_size_manual(values = c('unit_value' = 2, 'median' = 1.5, 'median_world' = 1, 'movav_unit_value' = 1.5, 'unit_value_mirror' = 1)) +
              scale_colour_manual(values = c('unit_value' = 'red', 'median' = 'yellow', 'median_world' = 'green', 'movav_unit_value' = 'orange', 'unit_value_mirror' = 'purple')) +
              labs(title = 'Unit value', subtitle = paste('Reporter:', input$reporter, '- Partner:', input$partner, '- Item:', input$item)) #+
