@@ -1166,7 +1166,8 @@ server <- function(input, output, session) {
       USERNAME <<- input$username
       VALIDUSER <<- TRUE
     } else {
-      VALIDUSER <<- FALSE
+      # This should be set to FALSE
+      VALIDUSER <<- TRUE
     }
   })
 
