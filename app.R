@@ -62,6 +62,10 @@ element_units <- read_csv(element_units_file)
 
 db <- readRDS(file = db_file) %>% tbl_df()
 
+# Team BC suggested to remove mirrorred data
+# (flag_value is more general)
+db <- db %>% filter(!grepl('^E', flag_value))
+
 db <- left_join(db, element_units, by = 'measuredItemCPC')
 
 ### XXX the out* variables should be integers
