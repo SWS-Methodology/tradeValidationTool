@@ -218,8 +218,8 @@ s_graph <- function(data = NA, outlier = NA, reference = NA, keep = NA) {
 }
 
 
-VALIDUSER <<- FALSE
-#VALIDUSER <<- TRUE
+#VALIDUSER <<- FALSE
+VALIDUSER <<- TRUE
 
 flags <- frame_data(
 ~flag, ~ObservationFlag, ~MethodFlag,
