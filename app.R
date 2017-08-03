@@ -50,7 +50,7 @@ if (app_mode == 'production') {
   stop('The "mode" should be either "test" or "production"')
 }
 
-page_flows <- 'http://hqlprsws1.hq.un.fao.org/flows/'
+page_flows <- 'http://hqlprsws1.hq.un.fao.org:3838/flows/'
 
 # nameData("trade", "completed_tf_cpc_m49", db %>% select(geographicAreaM49Reporter) %>% distinct() %>% data.table::data.table(), except = "timePointYears")
 reporter_names <- read.csv(reporter_names_file, colClasses = "character")
