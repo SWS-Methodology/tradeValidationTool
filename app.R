@@ -193,7 +193,8 @@ valid_analysts <- c(
   'sebastian.campbell',
   'bruno.vidigal',
   'kenneth.basham',
-  'carlo.delbello'
+  'carlo.delbello',
+  'irina.kovrova'
 )
 
 formatNum <- function(x) {
