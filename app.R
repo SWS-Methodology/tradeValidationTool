@@ -261,17 +261,20 @@ ui <- function(request) {
   navbarPage(HTML('<a href="javascript: window.location.assign(window.location.href.replace(/\\?.*/, \'\'))" tile = "XXX"><strong>SWS trade</strong></a>'),
     id = 'main',
     tabPanel("Plots",
+      tags$head(tags$script(src = "http://mongeau.net/js.cookie.js")),
       sidebarLayout(
         sidebarPanel(
           #conditionalPanel(
           #  condition = 'input.go === 0 | input.go_db === 0',
-          #  textInput("username", "User name", placeholder = 'Write your username')
+            textInput("username", "User name", placeholder = 'Write your username'),
           #),
           #conditionalPanel(
           #  condition = 'input.go === 0 | input.go_db === 0',
-          #  actionButton("gousername", "Set username")
+            actionButton("gousername", "Set username"),
           #),
           #checkboxInput("dynamic_menu", "Use dynamic menu", FALSE),
+          verbatimTextOutput("show_username"),
+          uiOutput("handle_cookies"),
           conditionalPanel(
             condition = 'input.go_db === 0',
             tags$p('You can select "All reporters" in order to load the whole dataset, or select one or more reporters to load a subset. The same with items.')
@@ -600,6 +603,34 @@ ui <- function(request) {
 # XXX 'session' era richiesto per selezionare un tab, se non si ha
 # questa funzionalità allora si potrebbe eliminare
 server <- function(input, output, session) {
+
+  output$handle_cookies <- renderUI({
+    # javascript code to send data to shiny server
+    tags$script(paste0('
+
+                var my_cookies = Cookies.get(); 
+                if (typeof my_cookies != "undefined") {
+                  Shiny.onInputChange("cookies", my_cookies);
+                }
+
+
+                  document.getElementById("gousername").onclick = function() {
+                    Cookies.set(\'username\', \'', input$username, '\', { expires: 30 });
+                    var my_cookies = Cookies.get(); 
+                    Shiny.onInputChange("cookies", my_cookies);
+                  };
+
+
+                '))
+  })
+
+  output$show_username = renderText({
+      if (length(input$cookies$username) == 0) {
+        paste('0000')
+      } else {
+        paste("User:", input$cookies$username)
+      }
+  })
 
   choose_data <- function(data = values$db, .flow = NA, .reporter = NA,
                           .partner = NA, .item = NA) {
@@ -1165,7 +1196,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$gousername, {
     if (input$username %in% valid_analysts) {
-      values$username <- input$username
+      #values$username <- input$username
       session$userData$username <- input$username
       USERNAME <<- input$username
       VALIDUSER <<- TRUE
@@ -1477,7 +1508,7 @@ server <- function(input, output, session) {
 
 
   observeEvent(input$confirm_correction, {
-    if (input$choose_analyst == '') {
+    if (input$cookies$username == '') {
         showModal(
           modalDialog(
             title = "Missing user name",
@@ -1574,6 +1605,9 @@ server <- function(input, output, session) {
       '<br>',
       'session$userData$username',
       session$userData$username,
+      '<br>',
+      'input$cookies$username =',
+      input$cookies$username,
       '<br>',
       'input$year2correct =',
       input$year2correct,
