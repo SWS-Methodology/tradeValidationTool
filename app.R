@@ -263,14 +263,14 @@ ui <- function(request) {
     tabPanel("Plots",
       sidebarLayout(
         sidebarPanel(
-          conditionalPanel(
-            condition = 'input.go === 0 | input.go_db === 0',
-            textInput("username", "User name", placeholder = 'Write your username')
-          ),
-          conditionalPanel(
-            condition = 'input.go === 0 | input.go_db === 0',
-            actionButton("gousername", "Set username")
-          ),
+          #conditionalPanel(
+          #  condition = 'input.go === 0 | input.go_db === 0',
+          #  textInput("username", "User name", placeholder = 'Write your username')
+          #),
+          #conditionalPanel(
+          #  condition = 'input.go === 0 | input.go_db === 0',
+          #  actionButton("gousername", "Set username")
+          #),
           #checkboxInput("dynamic_menu", "Use dynamic menu", FALSE),
           conditionalPanel(
             condition = 'input.go_db === 0',
@@ -290,29 +290,29 @@ ui <- function(request) {
           ),
           checkboxInput("use_corrected_data", "Use corrected data?", TRUE),
           conditionalPanel(
-            condition = 'input.go_db > 0 & input.go > 0',
+            condition = 'input.go_db > 0',
             selectInput("reporter", "Choose a reporter:", reporters)
           ),
           conditionalPanel(
-            condition = 'input.go_db > 0 & input.go > 0',
+            condition = 'input.go_db > 0',
             selectInput("partner", "Choose a partner:", partners)
           ),
           #uiOutput("partner"),
           conditionalPanel(
-            condition = 'input.go_db > 0 & input.go > 0',
+            condition = 'input.go_db > 0',
             selectInput("flow", "Choose a flow:", c(import = 1, export = 2))
           ),
           conditionalPanel(
-            condition = 'input.go_db > 0 & input.go > 0',
+            condition = 'input.go_db > 0',
             selectInput("item", "Choose an item:", items)
           ),
           #uiOutput("item"),
           conditionalPanel(
-            condition = 'input.go_db > 0 & input.go > 0',
+            condition = 'input.go_db > 0',
             actionButton("go", "Draw the plots")
           ),
           conditionalPanel(
-            condition = 'input.go_db > 0 & input.go > 0',
+            condition = 'input.go_db > 0',
             downloadButton("downloadData", "Download data")
           ),
           uiOutput('check_flags'),
