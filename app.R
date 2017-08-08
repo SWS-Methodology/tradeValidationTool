@@ -627,7 +627,7 @@ server <- function(input, output, session) {
 
   output$show_username = renderText({
       if (length(input$cookies$username) == 0) {
-        paste('0000')
+        paste('No user name')
       } else {
         paste("User:", input$cookies$username)
       }
