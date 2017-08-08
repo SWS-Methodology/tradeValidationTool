@@ -1684,11 +1684,26 @@ server <- function(input, output, session) {
         note_supervisor  = NA,
         name_analyst     = input$choose_analyst,
         name_supervisor  = NA,
-        date_correction  = format(Sys.Date(), "%Y-%m-%d"),
+        date_correction  = format(Sys.time(), "%Y-%m-%d-%H-%M-%S"),
         date_validation  = NA
       )
 
-      values$corrections <- bind_rows(corrections_new_row, values$corrections)
+      corrections_last <- readRDS(corrections_file)
+
+      # XXX check whether using dplyr::union is faster
+      delta_corrections <- anti_join(
+        corrections_last,
+        values$corrections,
+        by = c("reporter", "partner", "year", "item", "flow")
+      )
+
+      values$corrections <- bind_rows(
+          corrections_new_row,
+          delta_corrections,
+          values$corrections
+        ) %>%
+        distinct() %>%
+        arrange(desc(date_correction))
 
       ### XXX SAVECORR
       saveRDS(values$corrections, corrections_file)
