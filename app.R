@@ -603,8 +603,6 @@ ui <- function(request) {
 # questa funzionalità allora si potrebbe eliminare
 server <- function(input, output, session) {
 
-  VALIDUSER <- FALSE
-
   output$handle_cookies <- renderUI({
     # javascript code to send data to shiny server
     tags$script(paste0('
@@ -906,7 +904,8 @@ server <- function(input, output, session) {
     imputed_uv            = NA,
     db_imputed            = NA,
     test_s                = NA,
-    unmapped_links        = NA
+    unmapped_links        = NA,
+    valid_user            = FALSE
   )
 
   observeEvent(input$show_full_table, {
@@ -1195,12 +1194,12 @@ server <- function(input, output, session) {
 
   })
 
-  observeEvent(input$gousername, {
+  observeEvent(input$go_db, {
     if (input$cookies$username %in% valid_analysts) {
 
       values$username <- input$cookies$username
       USERNAME <- input$username
-      VALIDUSER <- TRUE
+      values$valid_user <- TRUE
 
       output$show_username = renderText(
             paste('User:', values$username)
@@ -1208,7 +1207,7 @@ server <- function(input, output, session) {
 
     } else {
 
-      VALIDUSER <- FALSE
+      values$valid_user <- FALSE
 
       output$show_username = renderText(
             paste('No valid user name')
@@ -1331,8 +1330,8 @@ server <- function(input, output, session) {
   output$full_out_table <- DT::renderDataTable({
     
 
-    #if ((input$go == 1 | input$gousername > 0) & VALIDUSER) {
-    if (VALIDUSER & input$go_db > 0) {
+    #if ((input$go == 1 | input$gousername > 0) & values$valid_user) {
+    if (values$valid_user & input$go_db > 0) {
 
       #tab_target = ' target="_blank"'
       tab_target = ''
@@ -1440,8 +1439,8 @@ server <- function(input, output, session) {
   })
 
   output$corrections_table <- DT::renderDataTable(
-    #if ((input$go == 1 | input$gousername > 0) & VALIDUSER) {
-    if (VALIDUSER) {
+    #if ((input$go == 1 | input$gousername > 0) & values$valid_user) {
+    if (values$valid_user) {
       DT::datatable(values$corrections, selection = 'single', options = list(pageLength = 50, dom = 'ptip', stateSave = TRUE, serverSide = TRUE), filter = 'top')
     } else {
       DT::datatable(data.frame(info = 'You cannot access this feature: please, indicate your user name and choose reporter/item.'))
@@ -1586,8 +1585,8 @@ server <- function(input, output, session) {
       'Valid analyst =',
       values$username %in% valid_analysts,
       '<br>',
-      'VALIDUSER =',
-      VALIDUSER,
+      'values$valid_user =',
+      values$valid_user,
       '<br>',
       'input$gousername =',
       input$gousername,
@@ -2042,8 +2041,8 @@ server <- function(input, output, session) {
      input$xgo
 
      isolate({
-       #if ((input$go == 1 | input$gousername > 0) & VALIDUSER) {
-       if (VALIDUSER & input$go_db > 0) {
+       #if ((input$go == 1 | input$gousername > 0) & values$valid_user) {
+       if (values$valid_user & input$go_db > 0) {
          if (input$bygroup == 'reporter') {
            dbx <- values$mydb %>%
              group_by(reporter_name)
