@@ -86,7 +86,8 @@ db <- db %>%
   mutate(tot.value = sum(value, na.rm = TRUE), perc.value = value / tot.value) %>%
   group_by(flow, geographicAreaM49Reporter, measuredItemCPC, timePointYears) %>%
   mutate(tot.qty = sum(qty, na.rm = TRUE), perc.qty = qty / tot.qty) %>%
-  ungroup()
+  ungroup() %>%
+  select(-tot.value, -tot.qty)
 
 # XXX adding a default "out" variable and "ma". Probably should already be there.
 db <- mutate(db, out = outman, ma = movav_unit_value)
