@@ -84,7 +84,7 @@ db <- db %>%
 db <- db %>%
   group_by(flow, geographicAreaM49Reporter, timePointYears) %>%
   mutate(tot.value = sum(value, na.rm = TRUE), perc.value = value / tot.value) %>%
-  group_by(flow, measuredItemCPC, timePointYears) %>%
+  group_by(flow, geographicAreaM49Reporter, measuredItemCPC, timePointYears) %>%
   mutate(tot.qty = sum(qty, na.rm = TRUE), perc.qty = qty / tot.qty) %>%
   ungroup()
 

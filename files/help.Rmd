@@ -245,9 +245,9 @@ The meaning of the columns is self explanatory, except:
   of the US).
 * **perc.qty**:
   Percentage of the quantity of the transaction over the total
-  quantities traded for that item (e.g., the quantity of US
-  imports of maize from Mexico over the total quantity of maize
-  imported by all countries).
+  quantities traded by the reporter for that item (e.g., the quantity
+  of US imports of maize from Mexico over the total quantity of maize
+  imported by the US).
 
 
 The table can be filtered by using the table headings. For
