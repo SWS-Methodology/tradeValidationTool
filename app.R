@@ -223,9 +223,6 @@ s_graph <- function(data = NA, outlier = NA, reference = NA, keep = NA) {
 }
 
 
-#VALIDUSER <<- FALSE
-VALIDUSER <<- TRUE
-
 flags <- frame_data(
 ~flag, ~ObservationFlag, ~MethodFlag,
 '-',
@@ -605,6 +602,8 @@ ui <- function(request) {
 # questa funzionalità allora si potrebbe eliminare
 server <- function(input, output, session) {
 
+  VALIDUSER <- FALSE
+
   output$handle_cookies <- renderUI({
     # javascript code to send data to shiny server
     tags$script(paste0('
@@ -880,7 +879,7 @@ server <- function(input, output, session) {
   corrections_table <- readRDS(corrections_file)
   saveRDS(corrections_table, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M'), '\\1'), corrections_file))
 
-  USERNAME <<- NA
+  USERNAME <- NA
 
   output$myiframe1 <- renderUI({
     my_iframe <- tags$iframe(src = page_flows, height = '800px', width = '100%')
@@ -1196,14 +1195,23 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$gousername, {
-    if (input$username %in% valid_analysts) {
-      #values$username <- input$username
-      session$userData$username <- input$username
-      USERNAME <<- input$username
-      VALIDUSER <<- TRUE
+    if (input$cookies$username %in% valid_analysts) {
+
+      values$username <- input$cookies$username
+      USERNAME <- input$username
+      VALIDUSER <- TRUE
+
+      output$show_username = renderText(
+            paste('User:', values$username)
+      )
+
     } else {
-      # This should be set to FALSE
-      VALIDUSER <<- TRUE
+
+      VALIDUSER <- FALSE
+
+      output$show_username = renderText(
+            paste('No valid user name')
+      )
     }
   })
 
@@ -1317,12 +1325,6 @@ server <- function(input, output, session) {
 
     selectInput("item", "Choose an item:", xitems)
   })
-
-  #reactive({
-  #  if (input$gousername > 0 & input$username %in% valid_analysts) {
-  #    VALIDUSER <<- TRUE
-  #  }
-  #})
 
   # http://stackoverflow.com/questions/29803310/r-shiny-build-links-between-tabs-with-dt-package
   output$full_out_table <- DT::renderDataTable({
@@ -1603,9 +1605,6 @@ server <- function(input, output, session) {
       '<br>',
       'nrow(values$corrections) =',
       nrow(values$corrections),
-      '<br>',
-      'session$userData$username',
-      session$userData$username,
       '<br>',
       'input$cookies$username =',
       input$cookies$username,
