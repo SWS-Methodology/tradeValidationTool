@@ -1194,7 +1194,7 @@ server <- function(input, output, session) {
 
   })
 
-  observeEvent(input$go_db, {
+  observeEvent(input$cookies$username, {
     if (input$cookies$username %in% valid_analysts) {
 
       values$username <- input$cookies$username
