@@ -404,6 +404,7 @@ ui <- function(request) {
                           'Unit value within the historical range of unit values for this partner',
                           'Unit values have no historic data flows for comparison, but are reasonable compared to partner/global values',
                           'Unit value outlier follows larger global trend in unit value movements',
+                          'Unit values are in line with median unit values for this reporter',
                           'Quantity confirmed by partner data',
                           'Non-food product'
                           ))
