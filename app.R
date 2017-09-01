@@ -868,6 +868,29 @@ server <- function(input, output, session) {
 
   }
 
+  combine_corrections <- function(working = NA, file = NA, new = NULL) {
+      corrections_last <- readRDS(file)
+
+      # XXX check whether using dplyr::union is faster
+      delta_corrections <- anti_join(
+        corrections_last,
+        working,
+        by = c("reporter", "partner", "year", "item", "flow")
+      )
+
+      new_corrections_state <- bind_rows(
+          new, # NULL is OK: no new correction is added
+          delta_corrections,
+          working
+        ) %>%
+        distinct() %>%
+        arrange(desc(date_correction))
+
+      ### XXX SAVECORR
+      saveRDS(new_corrections_state, file)
+
+      return(new_corrections_state)
+  }
 
 
   fun_plot <- function(data, out = FALSE) {
@@ -1695,25 +1718,11 @@ server <- function(input, output, session) {
         date_validation  = NA
       )
 
-      corrections_last <- readRDS(corrections_file)
-
-      # XXX check whether using dplyr::union is faster
-      delta_corrections <- anti_join(
-        corrections_last,
-        values$corrections,
-        by = c("reporter", "partner", "year", "item", "flow")
+      values$corrections <- combine_corrections(
+        working = values$corrections,
+        file = corrections_file,
+        new = corrections_new_row
       )
-
-      values$corrections <- bind_rows(
-          corrections_new_row,
-          delta_corrections,
-          values$corrections
-        ) %>%
-        distinct() %>%
-        arrange(desc(date_correction))
-
-      ### XXX SAVECORR
-      saveRDS(values$corrections, corrections_file)
 
       output$corrections_message <- renderText(
         paste0(
