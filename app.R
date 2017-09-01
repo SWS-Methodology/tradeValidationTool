@@ -878,18 +878,13 @@ server <- function(input, output, session) {
         by = c("reporter", "partner", "year", "item", "flow")
       )
 
-      new_corrections_state <- bind_rows(
+      bind_rows(
           new, # NULL is OK: no new correction is added
           delta_corrections,
           working
         ) %>%
         distinct() %>%
         arrange(desc(date_correction))
-
-      ### XXX SAVECORR
-      saveRDS(new_corrections_state, file)
-
-      return(new_corrections_state)
   }
 
 
@@ -1720,9 +1715,12 @@ server <- function(input, output, session) {
 
       values$corrections <- combine_corrections(
         working = values$corrections,
-        file = corrections_file,
-        new = corrections_new_row
+        file    = corrections_file,
+        new     = corrections_new_row
       )
+
+      ### XXX SAVECORR
+      saveRDS(values$corrections, corrections_file)
 
       output$corrections_message <- renderText(
         paste0(
