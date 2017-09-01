@@ -1669,10 +1669,10 @@ server <- function(input, output, session) {
       values$dup_correction <- FALSE
 
       data_original <- if (input$variable2correct == 'Quantity') {
-        (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['qty']]
-      } else {
-        (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value']]
-      }
+          (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['qty']]
+        } else {
+          (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value']]
+        }
 
       corrections_new_row <- data_frame(
         reporter         = reporter_code,
