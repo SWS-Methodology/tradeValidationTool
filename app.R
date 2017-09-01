@@ -1493,6 +1493,11 @@ server <- function(input, output, session) {
 
       values$corrections <- values$corrections[-as.numeric(input$corrections_table_rows_selected),]
 
+      values$corrections <- combine_corrections(
+        working = values$corrections,
+        file    = corrections_file
+      )
+
       output$corrections_message <- renderText('The correction has been deleted. You can now save a new correction.')
     }
 
