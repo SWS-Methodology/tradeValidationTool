@@ -612,7 +612,7 @@ ui <- function(request) {
 server <- function(input, output, session) {
 
   corrections_table <- readRDS(corrections_file)
-  saveRDS(corrections_table, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M'), '\\1'), corrections_file))
+  saveRDS(corrections_table, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M%S'), '\\1'), corrections_file))
 
   output$handle_cookies <- renderUI({
     # javascript code to send data to shiny server
