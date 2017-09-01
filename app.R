@@ -611,6 +611,9 @@ ui <- function(request) {
 # questa funzionalità allora si potrebbe eliminare
 server <- function(input, output, session) {
 
+  corrections_table <- readRDS(corrections_file)
+  saveRDS(corrections_table, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M'), '\\1'), corrections_file))
+
   output$handle_cookies <- renderUI({
     # javascript code to send data to shiny server
     tags$script(paste0('
@@ -900,9 +903,6 @@ server <- function(input, output, session) {
 
     return(g)
   }
-
-  corrections_table <- readRDS(corrections_file)
-  saveRDS(corrections_table, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M'), '\\1'), corrections_file))
 
   USERNAME <- NA
 
