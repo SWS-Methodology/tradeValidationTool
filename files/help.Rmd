@@ -7,12 +7,11 @@ output:
   html_document: default
 ---
 
-The interactive tools for trade data validation consists in three
+The interactive tools for trade data validation consists in two
 modules:
 
-* [Bilateral trade flow](http://campbells-fao:3838/mongeau/outliers/)
+* [Bilateral trade flow](http://hqlprsws1.hq.un.fao.org:3838/outliers/)
 * [Module/FAOSTAT comparison, flows](http://campbells-fao:3838/mongeau/flows/)
-* [Module/FAOSTAT comparison, differences](http://campbells-fao:3838/mongeau/diffs/)
 
 As the names suggest, the first one deals with bilateral trade
 flows (i.e., at the "complete trade flow" level), while the second
@@ -36,7 +35,7 @@ tools.)
 The interactive tool for validating bilateral trade flows is
 available at:
 
-<http://campbells-fao:3838/mongeau/outliers/>
+<http://hqlprsws1.hq.un.fao.org:3838/outliers/>
 
 Once you access the tool, the complete dataset with bilateral
 trade flows will be loaded. Given that it consists of more than 13
@@ -529,15 +528,10 @@ file).
 
 
 
-## Module/FAOSTAT comparison, flows and differences
-
-The two "Module/FAOSTAT comparison" modules (flows and
-differences) have a very similar look, so, in order to simplify
-the presentation, only one of them will be presented ("flows").
+## Module/FAOSTAT comparison
 
 The "flows" module can be accessed at
-<http://campbells-fao:3838/mongeau/flows/> and the "diffs" module
-can be accessed at <http://campbells-fao:3838/mongeau/diffs/>.
+<http://campbells-fao:3838/mongeau/flows/>.
 
 ### Rationale
 
