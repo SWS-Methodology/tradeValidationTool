@@ -64,7 +64,7 @@ db <- readRDS(file = db_file) %>% tbl_df()
 
 # Team BC suggested to remove mirrorred data
 # (flag_value is more general)
-db <- db %>% filter(!grepl('^E', flag_value))
+db <- db %>% filter(!grepl('^T', flag_value))
 
 db <- left_join(db, element_units, by = 'measuredItemCPC')
 
@@ -803,8 +803,8 @@ server <- function(input, output, session) {
       res$value_mirror_corr <- NA_real_
 
       ## When the partner is going to be corrected, it should have
-      ## 'E' inside flag_value if it's a mirror flow (needs correction)
-      cond <- res$corrected & grepl('E', res$flag_value_mirror)
+      ## 'T' inside flag_value if it's a mirror flow (needs correction)
+      cond <- res$corrected & grepl('T', res$flag_value_mirror)
 
       res[cond & !is.na(qty_corr), qty_mirror_corr := qty_corr]
       # In this case the flow is the reporter's
@@ -988,7 +988,7 @@ server <- function(input, output, session) {
         #    tidyr::spread(data_type, correction_input) %>%
         #    # XXX should "data_original" be kept and compared to the data
         #    # in case of missing/wrong mirror flags?
-        #    filter(grepl('E', flag_value)) %>%
+        #    filter(grepl('T', flag_value)) %>%
         #    mutate(
         #      qty_corr   = ifelse(is.na(qty_corr), qty, qty_corr),
         #      value_corr = ifelse(is.na(value_corr), value, ifelse(flow == 1L, value_corr*1.12, value_corr/1.12))
@@ -1078,8 +1078,8 @@ server <- function(input, output, session) {
         #  values$db <- sub_corrections_table[db %>% as.data.table(), , on = c('geographicAreaM49Reporter', 'geographicAreaM49Partner', 'timePointYears', 'measuredItemCPC', 'flow')]
 
         #  # When the partner is going to be corrected, it should have
-        #  # 'E' inside flag_value if it's a mirror flow (needs correction)
-        #  cond <- !values$db$rep_corrected & !grepl('E', values$db$flag_value)
+        #  # 'T' inside flag_value if it's a mirror flow (needs correction)
+        #  cond <- !values$db$rep_corrected & !grepl('T', values$db$flag_value)
 
         #  values$db[cond, c('rep_corrected', 'qty_corr', 'value_corr') := NA]
 
@@ -1365,10 +1365,10 @@ server <- function(input, output, session) {
       # XXX urlencode
       values$mydb %>%
         # Remove mirrored flows. Notice that it happens for the flag_value:
-        # It happens that 'E' in flag_qty is a subset of 'E' in flag_value
+        # It happens that 'T' in flag_qty is a subset of 'T' in flag_value
         # (the remaining non-E flag_qty are either 'I-c' or 'E-s')
         # XXX probably this should be an option?
-        filter(out == 1L, !grepl('E', flag_value)) %>%
+        filter(out == 1L, !grepl('T', flag_value)) %>%
         # XXX Note that this join will take a while if done on the whole table
         # (especially when the outlier option is set to "All data")
         left_join(
