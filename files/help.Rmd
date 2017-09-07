@@ -7,11 +7,11 @@ output:
   html_document: default
 ---
 
-The interactive tools for trade data validation consists in two
+The interactive tool for trade data validation consists in two
 modules:
 
 * [Bilateral trade flow](http://hqlprsws1.hq.un.fao.org:3838/outliers/)
-* [Module/FAOSTAT comparison, flows](http://campbells-fao:3838/mongeau/flows/)
+* [Module/FAOSTAT comparison, flows](http://hqlprsws1.hq.un.fao.org:3838/flows/)
 
 As the names suggest, the first one deals with bilateral trade
 flows (i.e., at the "complete trade flow" level), while the second
@@ -24,11 +24,11 @@ corrected.
 
 In the next sections, the modules will be explained in detail.
 
-(**Note**: the tools are not yet integrated in the Statistical
-Working System and they run from a local computer. Thus, if they
-is not available the reason is likely that the computer on which
-they run is off. Contact Team A if you have problems accessing the
-tools.)
+While indeed the bilateral and total trade tools for validation
+lives in two different pages, the latter can be accessed by the
+former in the "Module/FAOSTAT flows" component (technically, this
+is an iframe that opens the "flows" app inside the bilateral
+validation tool).
 
 ## Bilateral trade flows
 
@@ -37,33 +37,43 @@ available at:
 
 <http://hqlprsws1.hq.un.fao.org:3838/outliers/>
 
-Once you access the tool, the complete dataset with bilateral
-trade flows will be loaded. Given that it consists of more than 13
-million of bilateral transactions, it will require some seconds to
-load (around 30 seconds).
+The first time the tool is accessed, the complete dataset with
+bilateral trade flows will be loaded. Given that it consists of
+more than 14 million of bilateral transactions, it will require
+some seconds to load (around 30 seconds). Once it is accessed by
+someone, the whole dataset remains in the server cache until there
+is at least one analyst using it.
 
-When you load the app, it should look like the image below.
+When you load the app, it looks like the image below.
 
 ![Initial state][initial]
 
-The app is composed by six components:
+In order to access the functionalities of the tool, you will have
+to write your user name in the "User name" field, then select a
+reporter (or more reporters) and and item (or "All items", which
+is the default). When you do this, you can click on "Select DB" so
+that your choice is saved.
+
+The app is composed by seven components:
 
 * **Plots**
-* **Data table**
+* **Datatable**
 * **Corrections**
 * **Outliers stats**
 * **Other graphs**
 * **Mapping**
+* **Module/FAOSTAT flows**
 
 The next sections explain the various components
 
 ### Plots
 
-
 In this component you can plot graphs of the unit value, quantity
 and value for a combination of "reporter", "partner", "flow" (1 =
 imports, 2 = exports) and "item", which can be selected in the
-menu on the left column.
+menu on the left column or, more likely, in the "Datatable" table
+where the outliers are shown (you'll have to click on "link";
+details further in the text).
 
 When you click on the menu under "Choose a reporter:", a list of
 reporters appears and you can select one reporter.
@@ -84,8 +94,9 @@ A similar approach should be used for selection the item
 
 Once you define your selection, you can click on "Draw the plot"
 to see the plots (note that you can also choose a combination of
-reporter/partner/flow/item in the "Data table" component; see
-below). An example of the results can be seen below.
+reporter/partner/flow/item in the "Datatable" component; see
+below). An example of the results can be seen in the following
+graph.
 
 ![Results][results_selection]
 
@@ -102,7 +113,7 @@ shown in all graphs):
 * **green**: median of the world.
 
 Outliers, defined by using the "fixed threshold" method (see the
-definition below in the "Data table" paragraph), are shown with a
+definition below in the "Datatable" paragraph), are shown with a
 black point.
 
 Below the three first three graphs, there is an infobox that shows
@@ -111,6 +122,9 @@ one flow of that commodity in the whole period condidered (in the
 example it says: "Number of different partners on the whole
 sample:  43").  Just below this information, there is a graph
 showing the distribution of actual partners by specific years.
+
+There is also a graph showing the aggregated flow of the selected
+commodity for the repoter under analysis.
 
 Finally, a snapshot of the data is show at the end of the page.
 
@@ -124,14 +138,27 @@ observations.
 
 Note: instead of selecting combinations of
 reporters/partners/items in order to search for outliers, it is
-possible to select the series with outliers in the "Data table"
+possible to select the series with outliers in the "Datatable"
 component, which will be described further. This allows to save some
-time by focussing only on countries with outliers.
+time by focussing only on countries with outliers. You may want to
+have a look at that section before reading how to actually correct
+outliers, as it shows how the outliers are identified.
 
 #### Choose a correction type
 
 If you need to correct some anomalous (outlier) observation, you
 can do it in the "Plots" component.
+
+It is possible to correct either the value or the quantity. In
+both cases, the main value that gets corrected is the unit value
+and, consequently, the veriable you decided to correct by
+considering the other variable as correct. Thus, if you decide to
+correct a quantity you first have a look at the unit value of that
+transaction, fix it and then the imputed quantity will be given by
+the ratio between the value and the corrected unit value;
+conversely, if you want to correct a value, you fix the unit value
+and the imputed value is obtained by multiplying the quantity by
+the corrected unit value.
 
 You can choose the year for which you want to do a correction
 ("Choose a year to correct:") and a type of correction ("Choose a
@@ -139,46 +166,64 @@ type of correction:"):
 
 * **None**:
   This should be used to confirm that an outlier is OK and should
-  not be corrected. **Please note that currently this option does
-  not produce any interesting result; please, use another method
-  instead**.
-* **Quantity factor**:
-  This can be useful if the quantity may have been reported with a
-  wrong measurement unit, by a factor of 10.  If you choose this
-  option, it will be displayed below if the ratio of the unit
-  value to the median unit value is "near" a factor of 10 and will
-  suggest which factor is the most likely.
-* **Mirror quantity**:
+  not be corrected.
+* **Measurement factor**:
+  This can be useful if the quantity or value may have been
+  reported with a wrong measurement unit, by a factor of 10.  If
+  you choose this option, it will be displayed below if the ratio
+  of the unit value to the median unit value is "near" a factor of
+  10 and will suggest which factor is the most likely. More
+  technically, the ratio between the unit value and the median
+  unit value is computed: if this ratio is greater than or less
+  than (with a 10% approximation) $10^(round(log10(ratio)))$ then
+  it means that the transaction was likely reported with a unit of
+  measurement (of a factor of 10) issue.
+* **Mirror flow**:
   Use the flow of the partner, if it exists (if it does not, you
   will get a feedback indicating that).
 * **Outlier correction**:
-  **median with respect to all partners**, or **median of the
-  world** (the values of these figures will be printed, so that
-  you can choose the most appropriate).
-* **Expert knowledge**:
-  literature or otherwise justified.
+  It is possible to use three different types of correction (in
+  all cases, the values of these figures will be printed, so that
+  you can choose the most appropriate):
+    - **Median partners**: median with respect to all partners, that
+      is, the median for the reporter's trade (import or export
+      specific) in the year of interest of the analysed commodity to
+      all its partner is used.
+    - **Median world**: median of the unit value of all reporters to
+      all partners, that is, the median of all the reporters that
+      traded (import or export specific) the analysed commodity in
+      the year of interest is used.
+    - **Moving average**: the three year-moving average (starting
+      from the year previous to the one analysed) of the unit
+      value of the trade flow of the commodity of the analysed
+      reporter.
+* **Expert knowledge**: literature or otherwise justified figure,
+  in other words, this is a figure that an analyst set given some
+  external source.
 
 In the image below, the year was set to 2012, and the menu for the
 correction type shows the alternatives.
 
 ![Correction menus][correction_menus]
   
-In "Optional comment/note:" you **must** write a comment that
-will be saved into the corrections table (e.g., if an expert gave
-a specific number, the name of the expert and/or the source of the
-data must be written here).
+In "Optional comment/note:" you **can** write a comment that will
+be saved into the corrections table. If the type of correction is
+given by "Expert knowledge" then the note becomes "Mandatory
+comment/note" and the comment **must** be written (basically, if
+an expert gave a specific number, the name of the expert and/or
+the source of the data must be written here).
 
 You can apply the correction by clicking "Apply correction", In
-this case the unit value and quantity plots will show a new series
-which contains the correction.
+this case the unit value and quantity (or value) plots will show a
+new series which contains the correction.
 
 The following figure shows a correction example: in 2012 we
 suspect that the quantity variable is too high, which is reflected
 in a low unit value. We set the new unit value to be equal to the
 median unit value with respect to all partners (Choose a year to
-correct: > 2012; Choose a type of correction: > Outlier
-correction; How to correct unit_value: > Median partners). A black
-line will show the new value (the original value is still
+correct: &gt; 2012; Choose a type of correction: &gt; Outlier
+correction; How to correct unit\_value: &gt; Median partners). A
+black line will show the new value (the original value is still
 visible, in red).
 
 ![Corrrection example][correction_example]
@@ -196,7 +241,7 @@ the "Corrections" component (see below).
 ![Confirm correction][correction_success]
 
 
-### Data table
+### Datatable
 
 This table presents all the observations classified as outliers.
 In the current configuration of the app, the definition criterion
@@ -208,24 +253,28 @@ in the "Outliers stats" and "Other graphs" component, not in the
 * **Fixed threshold**:
   (Default method) Observations are outliers if the ratio of the
   unit value to its 3-year moving average is below 0.5 or above
-  1.5 (the moving average for the first three years is computed as
-  a "forward" moving average).
+  1.5 (the three year period starts in the year immediately before
+  the analysed year; the moving average for the first three years
+  is computed as a "forward" moving average).
 * **Variable threshold**:
   Similar to the "Fixed threshold" method (see above), but
   thresholds are defined as the 5th and 95th percentiles of the
-  distribution ot the ratio computed specifically for the item
+  distribution of the ratio computed specifically for the item
   (e.g., there are different thresholds, for "maize (corn)",
-  "mushrooms and thruffles", etc.).
+  "mushrooms and thruffles", etc.). In other words, for each
+  commodity the distribution of the unit value and the three-year
+  moving average is obtained and the thresholds are set as the
+  5th and 95th percentile.
 * **100 median**:
   A unit value is considered an outlier if it is below 1/100 or
   above 100 times the median unit value of all reporter/partners
   (i.e., flow/item/year specific).
 * **Boxplot**:
   A unit value is an outlier if its logarithm is outside the
-  intervals defined as Q1-1.5*(Q3-Q1) and Q3+1.5*(Q3-Q1), where Q1
-  and Q3 are the first and third quartile of the logarithm of the
-  unit values of that specific item/flow combination with respect
-  to all partners of the reporter.
+  intervals defined as $Q1-1.5*(Q3-Q1)$ and $Q3+1.5*(Q3-Q1)$,
+  where Q1 and Q3 are the first and third quartile of the
+  logarithm of the unit values of that specific item/flow
+  combination with respect to all partners of the reporter.
 
 Each row has a "link": if you click this, the
 reporter/partner/flow/item combination will be shown in the
@@ -253,14 +302,14 @@ The table can be filtered by using the table headings. For
 instance, let&rsquo;s say that only the imports of the US from
 Mexico requires analysis: in this case, "United States of America"
 (or just some part of the whole name) should be written in the
-field below "reporter_name", "Mexico" (or a part of the name)
-below "partner_name", and "1" under "flow".
+field below "reporter\_name", "Mexico" (or a part of the name)
+below "partner\_name", and "1" under "flow".
 
 ![USA - Mexico example][sort_example]
 
 The table is sortable, by clicking on the table headings. For
 instance, the flows with the highest unit values can be seen by
-clicking on "unit_value": the default behaviour is to sort in an
+clicking on "unit\_value": the default behaviour is to sort in an
 ascending order, thus you should click again in order to have a
 descending order.
 
@@ -292,7 +341,7 @@ The columns are:
   The classification code to which the correction is applied --
   **Currently only "CPC" is supported**.
 * **correction_hs**:
-  If "correction_level" is "HS" in this field should be
+  If "correction\_level" is "HS" in this field should be
   indicated which HS code needs the correction.
 * **correction_input**:
   The corrections to be applied.
@@ -301,7 +350,7 @@ The columns are:
   component.
 * **correction_note**:
   Automatically inserted string; Varies automatically by
-  "correction_type".
+  "correction\_type".
 * **note_analyst**:
   The note inserted in the "Optional comment/note:" field
   in the "Plots" component.
@@ -363,7 +412,7 @@ not implemented.**
 ### Outliers stats
 
 In this component some statistics on outliers will be shown (the
-criterion chosen in "Data table" will be used; by default it is
+criterion chosen in "Datatable" will be used; by default it is
 "Fixed threshold"). The aggregations that can be done are by:
 
 * reporter
@@ -395,7 +444,7 @@ The following graphs show the tables that can be generated.
 
 This component is intended to have some graphs that helps the
 analyst to spot the cases that need more attention (the outlier
-criterion chosen in "Data table" will be used; by default it is
+criterion chosen in "Datatable" will be used; by default it is
 "Fixed threshold"). Currently it has the following graphs (click
 "Generate graphs" to see them):
 
@@ -432,9 +481,12 @@ the graph). An example is shown in the following figure.
 
 ### Mapping
 
+**NOTE**: this component is not being used as the mapping has been
+integrated into the complete\_tf\_m49 module.
+
 This component helps you to transform an XLSX file with mapped
-HS>FCL codes into a CSV file of mapped codes to be uploaded into
-the SWS.
+HS&gt;FCL codes into a CSV file of mapped codes to be uploaded
+into the SWS.
 
 Your XLSX file should be structured like shown in the following
 figure.
@@ -531,7 +583,7 @@ file).
 ## Module/FAOSTAT comparison
 
 The "flows" module can be accessed at
-<http://campbells-fao:3838/mongeau/flows/>.
+<http://hqlprsws1.hq.un.fao.org:3838/flows/>.
 
 ### Rationale
 
