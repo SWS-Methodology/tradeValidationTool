@@ -78,9 +78,6 @@ db <- db %>%
   ungroup() %>%
   select(-tot.value, -tot.qty)
 
-# XXX adding a default "out" variable and "ma". Probably should already be there.
-db <- mutate(db, out = outman, ma = movav_unit_value)
-
 # Item names
 db <- db %>% left_join(item_names, by = "measuredItemCPC")
 
