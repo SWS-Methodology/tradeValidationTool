@@ -68,17 +68,6 @@ db <- db %>% filter(!grepl('^T', flag_value))
 
 db <- left_join(db, element_units, by = 'measuredItemCPC')
 
-### XXX the out* variables should be integers
-db <- db %>%
-  #select(-p95n, -ratio_man, -p05n) %>%
-  mutate(
-    outman   = as.integer(outman),
-    outmw100 = as.integer(outmw100),
-    outp     = as.integer(outp),
-    outM2    = as.integer(outM2),
-    outM     = as.integer(outM)
-  )
-
 # XXX Adding percentages of values and quantities.
 # These should be already defined in the original data.
 db <- db %>%
