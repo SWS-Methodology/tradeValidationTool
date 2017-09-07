@@ -85,24 +85,17 @@ db <- db %>% left_join(item_names, by = "measuredItemCPC")
 db <- db %>% left_join(reporter_names, by = "geographicAreaM49Reporter")
 db <- db %>% left_join(partner_names, by = "geographicAreaM49Partner")
 
-#DB <- db %>% filter(!is.na(qty))
-    
-
 hs_descr <- data.frame(
     hs = unlist(lapply(RJSONIO::fromJSON(comtrade_classif_file)$results, function(x) x[['id']])),
     description = unlist(lapply(RJSONIO::fromJSON(comtrade_classif_file)$results, function(x) x[['text']])),
     stringsAsFactors = FALSE
   )
 
-
 hs_descr_hs6 <- hs_descr %>%
   mutate(hslength = nchar(hs), description = stringr::str_replace(description, '^.* - *', '')) %>%
   filter(hslength == 6) %>%
   select(-hslength) %>%
   rename(hs6 = hs)
-
-# missing_links <- read_csv('C:/Users/mongeau/Dropbox/FAO/Shiny/outliers_CPC/missing_hs-fcl_links.csv') %>% mutate(hs6 = stringr::str_sub(hs, 1, 6)) %>% left_join(hs_descr_hs6, by = 'hs6') %>% select(-hs6)
-
 
 
 items_comtrade <- hs_descr$hs
