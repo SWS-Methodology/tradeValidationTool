@@ -34,9 +34,6 @@ comtrade_reporter_file <- paste0(files_location, 'reporterAreas.json')
 comtrade_classif_file  <- paste0(files_location, 'classificationHS.json')
 hs6standard_file       <- paste0(files_location, 'HS2012-6%20digits%20Standard.xls')
 hsfclmap3_file         <- paste0(files_location, 'hsfclmap3.RData')
-reporter_names_file    <- paste0(files_location, 'fao_m49_reporter_names.csv')
-partner_names_file     <- paste0(files_location, 'fao_m49_partner_names.csv')
-item_names_file        <- paste0(files_location, 'fao_cpc_names.csv')
 help_file              <- paste0(files_location, 'help.Rmd')
 element_units_file     <- paste0(files_location, 'fao_item_units.csv')
 
@@ -52,11 +49,6 @@ if (app_mode == 'production') {
 
 page_flows <- 'http://hqlprsws1.hq.un.fao.org:3838/flows/'
 
-# nameData("trade", "completed_tf_cpc_m49", db %>% select(geographicAreaM49Reporter) %>% distinct() %>% data.table::data.table(), except = "timePointYears")
-reporter_names <- read.csv(reporter_names_file, colClasses = "character")
-# nameData("trade", "completed_tf_cpc_m49", db %>% select(geographicAreaM49Partner) %>% distinct() %>% data.table::data.table(), except = "timePointYears")
-partner_names <- read.csv(partner_names_file, colClasses = "character")
-item_names <- read.csv(item_names_file, colClasses = "character")
 fcl_codes <- read_csv(fcl_2_cpc_file)$fcl
 element_units <- read_csv(element_units_file)
 
