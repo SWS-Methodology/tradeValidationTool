@@ -64,16 +64,6 @@ db <- readRDS(file = db_file)
 
 db <- left_join(db, element_units, by = 'measuredItemCPC')
 
-# XXX Adding percentages of values and quantities.
-# These should be already defined in the original data.
-db <- db %>%
-  group_by(flow, geographicAreaM49Reporter, timePointYears) %>%
-  mutate(tot.value = sum(value, na.rm = TRUE), perc.value = value / tot.value) %>%
-  group_by(flow, geographicAreaM49Reporter, measuredItemCPC, timePointYears) %>%
-  mutate(tot.qty = sum(qty, na.rm = TRUE), perc.qty = qty / tot.qty) %>%
-  ungroup() %>%
-  select(-tot.value, -tot.qty)
-
 # Item names
 db <- db %>% left_join(item_names, by = "measuredItemCPC")
 
