@@ -60,7 +60,7 @@ item_names <- read.csv(item_names_file, colClasses = "character")
 fcl_codes <- read_csv(fcl_2_cpc_file)$fcl
 element_units <- read_csv(element_units_file)
 
-db <- readRDS(file = db_file) %>% tbl_df()
+db <- readRDS(file = db_file)
 
 # Team BC suggested to remove mirrorred data
 # (flag_value is more general)
@@ -2490,7 +2490,7 @@ server <- function(input, output, session) {
 
            myplotUV_imputed$data <- myplotUV_imputed$data %>%
              mutate(
-               imputed_unit_value = ifelse(timePointYears == input$year2correct, d_imputed$value / as.numeric(input$correction10), d_imputed$value),
+               imputed_unit_value = ifelse(timePointYears == input$year2correct, d_imputed$value * as.numeric(input$correction10), d_imputed$value),
                imputed_unit_value = ifelse(variable == 'unit_value', imputed_unit_value, NA)
              )
          } else if (input$choose_correction == 'Outlier correction') {
