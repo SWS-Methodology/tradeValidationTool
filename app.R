@@ -62,10 +62,6 @@ element_units <- read_csv(element_units_file)
 
 db <- readRDS(file = db_file)
 
-# Team BC suggested to remove mirrorred data
-# (flag_value is more general)
-db <- db %>% filter(!grepl('^T', flag_value))
-
 db <- left_join(db, element_units, by = 'measuredItemCPC')
 
 # XXX Adding percentages of values and quantities.
