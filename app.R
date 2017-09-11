@@ -38,8 +38,9 @@ help_file              <- paste0(files_location, 'help.Rmd')
 element_units_file     <- paste0(files_location, 'fao_item_units.csv')
 
 if (app_mode == 'production') {
-  corrections_file <- paste0(files_location, 'corrections_table.rds')
-  db_file          <- paste0(files_location, 'db.rds')
+  # XXX the dir should be in config file
+  corrections_file <- paste0('/work/SWS_R_Share/trade/validation_tool_files/', 'corrections_table.rds')
+  db_file          <- paste0('/work/SWS_R_Share/trade/validation_tool_files/', 'db.rds')
 } else if (app_mode == 'test') {
   corrections_file <- file.path(persistent_files, 'test', 'corrections_table.rds')
   db_file          <- file.path(persistent_files, 'db.rds')
