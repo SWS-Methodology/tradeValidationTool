@@ -111,9 +111,9 @@ powers <- function(to.check, benchmark) {
 
 
 
-reporters <- c("", sort(reporter_names$reporter_name))
+reporters <- c("", sort(unique(db$reporter_name)))
 
-partners <- c("", sort(partner_names$partner_name))
+partners <- c("", sort(unique(db$partner_name)))
 
 items <- c("", sort(unique(db$item_name)))
 
