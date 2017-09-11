@@ -56,13 +56,6 @@ db <- readRDS(file = db_file)
 
 db <- left_join(db, element_units, by = 'measuredItemCPC')
 
-# Item names
-db <- db %>% left_join(item_names, by = "measuredItemCPC")
-
-# Country names
-db <- db %>% left_join(reporter_names, by = "geographicAreaM49Reporter")
-db <- db %>% left_join(partner_names, by = "geographicAreaM49Partner")
-
 hs_descr <- data.frame(
     hs = unlist(lapply(RJSONIO::fromJSON(comtrade_classif_file)$results, function(x) x[['id']])),
     description = unlist(lapply(RJSONIO::fromJSON(comtrade_classif_file)$results, function(x) x[['text']])),
@@ -122,7 +115,7 @@ reporters <- c("", sort(reporter_names$reporter_name))
 
 partners <- c("", sort(partner_names$partner_name))
 
-items <- c("", sort(item_names$item_name))
+items <- c("", sort(unique(db$item_name)))
 
 years <- c("", as.character(2000:2015))
 
