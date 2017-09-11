@@ -822,7 +822,7 @@ server <- function(input, output, session) {
 
   }
 
-  combine_corrections <- function(working = NA, file = NA, new = NULL) {
+  combine_corrections <- function(working = NA, file = NA, remove = NULL, new = NULL) {
       corrections_last <- readRDS(file)
 
       # XXX check whether using dplyr::union is faster
@@ -831,6 +831,15 @@ server <- function(input, output, session) {
         working,
         by = c("reporter", "partner", "year", "item", "flow")
       )
+
+      # Eventually remove a correction that is beign deleted
+      if (!is.null(remove)) {
+        delta_corrections <- anti_join(
+          delta_corrections,
+          remove,
+          by = c("reporter", "partner", "year", "item", "flow")
+        )
+      }
 
       bind_rows(
           new, # NULL is OK: no new correction is added
@@ -1442,11 +1451,14 @@ server <- function(input, output, session) {
   observeEvent(input$okDeleteCorrection, {
     if (!is.null(input$corrections_table_rows_selected)) {
 
+      to_remove <- values$corrections[as.numeric(input$corrections_table_rows_selected),]
+
       values$corrections <- values$corrections[-as.numeric(input$corrections_table_rows_selected),]
 
       values$corrections <- combine_corrections(
         working = values$corrections,
-        file    = corrections_file
+        file    = corrections_file,
+        remove  = to_remove
       )
 
       output$corrections_message <- renderText('The correction has been deleted. You can now save a new correction.')
