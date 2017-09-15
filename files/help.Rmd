@@ -1,5 +1,10 @@
 ---
 title: '**Interactive tools for trade data validation**'
+author:
+  Christian A. Mongeau Ospina\
+
+  Food and Agriculture Organization of the United Nations
+date: "`r format(Sys.time(), '%e %B %Y')`"
 output:
   word_document: default
   pdf_document:
@@ -15,7 +20,7 @@ modules:
 
 As the names suggest, the first one deals with bilateral trade
 flows (i.e., at the "complete trade flow" level), while the second
-and third ones with comparisons of module and FAOSTAT aggregated
+deals with comparisons of module and FAOSTAT aggregated
 data (i.e., at the "total trade flow" level).
 
 By using the tools (singularly, or, possibly, in combination one
@@ -27,8 +32,12 @@ In the next sections, the modules will be explained in detail.
 While indeed the bilateral and total trade tools for validation
 lives in two different pages, the latter can be accessed by the
 former in the "Module/FAOSTAT flows" component (technically, this
-is an iframe that opens the "flows" app inside the bilateral
+is an *iframe* that opens the "flows" app inside the bilateral
 validation tool).
+
+**Note: given that the process for generating the whole elements
+of _Module/FAOSTAT comparison_ is very time-consuming, currently other
+validation strategies for total trade are in course of development.**
 
 ## Bilateral trade flows
 
@@ -64,7 +73,7 @@ The app is composed by seven components:
 * **Mapping**
 * **Module/FAOSTAT flows**
 
-The next sections explain the various components
+The next sub-sections explain the various components.
 
 ### Plots
 
@@ -116,7 +125,7 @@ Outliers, defined by using the "fixed threshold" method (see the
 definition below in the "Datatable" paragraph), are shown with a
 black point.
 
-Below the three first three graphs, there is an infobox that shows
+Below the first three graphs, there is an infobox that shows
 the number of countries with which the reporter has had at least
 one flow of that commodity in the whole period condidered (in the
 example it says: "Number of different partners on the whole
@@ -126,10 +135,10 @@ showing the distribution of actual partners by specific years.
 There is also a graph showing the aggregated flow of the selected
 commodity for the repoter under analysis.
 
-Finally, a snapshot of the data is show at the end of the page.
+Finally, a snapshot of the data is shown at the end of the page.
 
-After you draw the plots, you can download the underlying data by
-clicking the "Download" button.
+After you draw the plots, it is possible to download the underlying
+data by clicking the "Download" button.
 
 ![Download data][download_selection]
 
@@ -151,14 +160,13 @@ can do it in the "Plots" component.
 
 It is possible to correct either the value or the quantity. In
 both cases, the main value that gets corrected is the unit value
-and, consequently, the veriable you decided to correct by
-considering the other variable as correct. Thus, if you decide to
-correct a quantity you first have a look at the unit value of that
-transaction, fix it and then the imputed quantity will be given by
-the ratio between the value and the corrected unit value;
-conversely, if you want to correct a value, you fix the unit value
-and the imputed value is obtained by multiplying the quantity by
-the corrected unit value.
+to and, consequently, the variable you decided to correct by
+considering the other variable as already correct. Thus, if you decide
+to correct a quantity, you first should have a look at the unit value of
+that transaction, fix it and then the imputed quantity will be given by the
+ratio between the value and the corrected unit value; conversely, if you
+want to correct a value, you fix the unit value and the imputed value is
+obtained by multiplying the quantity by the corrected unit value.
 
 You can choose the year for which you want to do a correction
 ("Choose a year to correct:") and a type of correction ("Choose a
@@ -174,7 +182,7 @@ type of correction:"):
   of the unit value to the median unit value is "near" a factor of
   10 and will suggest which factor is the most likely. More
   technically, the ratio between the unit value and the median
-  unit value is computed: if this ratio is greater than or less
+  unit value is computed; if this ratio is greater than or less
   than (with a 10% approximation) $10^(round(log10(ratio)))$ then
   it means that the transaction was likely reported with a unit of
   measurement (of a factor of 10) issue.
@@ -208,12 +216,12 @@ correction type shows the alternatives.
   
 In "Optional comment/note:" you **can** write a comment that will
 be saved into the corrections table. If the type of correction is
-given by "Expert knowledge" then the note becomes "Mandatory
+set to "Expert knowledge" then the note becomes "Mandatory
 comment/note" and the comment **must** be written (basically, if
 an expert gave a specific number, the name of the expert and/or
 the source of the data must be written here).
 
-You can apply the correction by clicking "Apply correction", In
+You can apply the correction by clicking "Apply correction". In
 this case the unit value and quantity (or value) plots will show a
 new series which contains the correction.
 
@@ -234,9 +242,10 @@ the same button.
 
 Once you are confident with the correction, click "Confirm
 correction". This will open a confirmation menu, where you can
-confirm (OK) or go back. In the case you confirm, the correction
-will be saved in the correction table that can be visualised in
-the "Corrections" component (see below).
+confirm (OK), or go back (if you decide to go back, no correction
+will be stored . In the case you confirm, the correction will be
+saved in the correction table that can be visualised in the
+"Corrections" component (see below).
 
 ![Confirm correction][correction_success]
 
@@ -245,10 +254,10 @@ the "Corrections" component (see below).
 
 This table presents all the observations classified as outliers.
 In the current configuration of the app, the definition criterion
-for which an observation is considered an outlier can be chosen by
-the user (when you choose a criterion here, this will be used also
-in the "Outliers stats" and "Other graphs" component, not in the
-"Plots" component). We propose four criteria:
+for which an observation is considered as an outlier can be chosen
+by the user (when you choose a criterion here, this will be used
+also in the "Outliers stats" and "Other graphs" component, not in
+the "Plots" component). We propose four criteria:
 
 * **Fixed threshold**:
   (Default method) Observations are outliers if the ratio of the
@@ -260,7 +269,7 @@ in the "Outliers stats" and "Other graphs" component, not in the
   Similar to the "Fixed threshold" method (see above), but
   thresholds are defined as the 5th and 95th percentiles of the
   distribution of the ratio computed specifically for the item
-  (e.g., there are different thresholds, for "maize (corn)",
+  (there are different thresholds, e.g., for "maize (corn)",
   "mushrooms and thruffles", etc.). In other words, for each
   commodity the distribution of the unit value and the three-year
   moving average is obtained and the thresholds are set as the
@@ -276,8 +285,13 @@ in the "Outliers stats" and "Other graphs" component, not in the
   logarithm of the unit values of that specific item/flow
   combination with respect to all partners of the reporter.
 
-Each row has a "link": if you click this, the
-reporter/partner/flow/item combination will be shown in the
+If, sor some reason, you do not want this table to show only the outliers,
+but *all* the dataset (i.e., both outlier and non-outlier observations) then
+it is possible to select the **All data** in the dropdown menu under "Choose
+an outlier detection method:".
+
+Each row has a "link" in the leftmost column: if you click this,
+the reporter/partner/flow/item combination will be shown in the
 "Plots" tab.
 
 ![Table with outliers][outliers_table]
@@ -296,10 +310,11 @@ The meaning of the columns is self explanatory, except:
   quantities traded by the reporter for that item (e.g., the quantity
   of US imports of maize from Mexico over the total quantity of maize
   imported by the US).
+* **corrected**: shows whether the observation has been already corrected.
 
 
 The table can be filtered by using the table headings. For
-instance, let&rsquo;s say that only the imports of the US from
+instance, let us say that only the imports of the US from
 Mexico requires analysis: in this case, "United States of America"
 (or just some part of the whole name) should be written in the
 field below "reporter\_name", "Mexico" (or a part of the name)
@@ -407,7 +422,7 @@ previous one (as explained above).
 ![Delete correction][correction_delete]
 
 **This table should be saved in the SWS. Currently, this is
-not implemented.**
+not yet implemented.**
 
 ### Outliers stats
 
@@ -481,8 +496,8 @@ the graph). An example is shown in the following figure.
 
 ### Mapping
 
-**NOTE**: this component is not being used as the mapping has been
-integrated into the complete\_tf\_m49 module.
+**NOTE: this component is not being used as the mapping has been
+integrated into the `complete_tf_m49` module.**
 
 This component helps you to transform an XLSX file with mapped
 HS&gt;FCL codes into a CSV file of mapped codes to be uploaded
