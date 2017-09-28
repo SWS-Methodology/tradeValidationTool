@@ -118,7 +118,7 @@ partners <- c("", sort(unique(db$partner_name)))
 
 items <- c("", sort(unique(db$item_name)))
 
-years <- c("", as.character(2000:2015))
+years <- c("", sort(unique(db$timePointYears)))
 
 types_correction <- c(
   'None',
