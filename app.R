@@ -1415,7 +1415,7 @@ server <- function(input, output, session) {
           #$("#partner")[0].textContent = "Colombia";
           #$("#partner option")[0].value = "Colombia";
         ) %>%
-        DT::formatCurrency(c('qty', 'value (1,000$)'), digits = 3, currency = '') %>%
+        DT::formatCurrency(c('qty', 'value (1,000$)'), digits = 0, currency = '') %>%
         DT::formatCurrency(c('unit_value', 'ma'), digits = 3, currency = '') %>%
         DT::formatPercentage(c('perc.value', 'perc.qty'), 1)
 
