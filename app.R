@@ -612,9 +612,11 @@ server <- function(input, output, session) {
         timePointYears,
         qty,
         value,
+        weight,
         unit_value,
         flag_qty,
         flag_value,
+        flag_weight,
         qty_unit
       ) %>%
       filter(
@@ -704,12 +706,14 @@ server <- function(input, output, session) {
         partner_name  == .reporter
       ) %>%
       mutate(value == ifelse(flow == 2, value * 1.12, value/1.12)) %>%
-      select(timePointYears, qty, value, flag_qty, flag_value) %>%
+      select(timePointYears, qty, value, weight, flag_qty, flag_value, flag_weight) %>%
       rename(
-        qty_mirror        = qty,
-        value_mirror      = value,
-        flag_qty_mirror   = flag_qty,
-        flag_value_mirror = flag_value
+        qty_mirror         = qty,
+        value_mirror       = value,
+        weight_mirror      = weight,
+        flag_qty_mirror    = flag_qty,
+        flag_value_mirror  = flag_value,
+        flag_weight_mirror = flag_weight
       ) %>%
       mutate(unit_value_mirror = value_mirror / qty_mirror)
 
@@ -1373,6 +1377,7 @@ server <- function(input, output, session) {
           year = timePointYears,
           qty,
           `value (1,000$)` = value,
+          weight,
           unit_value,
           qty_unit,
           ma,
@@ -1380,6 +1385,7 @@ server <- function(input, output, session) {
           perc.qty,
           `flag qty` = flag_qty,
           `flag value` = flag_value,
+          `flag weight` = flag_weight,
           corrected
         ) %>%
         # XXX year, flag_qty, flag_value should be factor in order for the
@@ -1415,7 +1421,7 @@ server <- function(input, output, session) {
           #$("#partner")[0].textContent = "Colombia";
           #$("#partner option")[0].value = "Colombia";
         ) %>%
-        DT::formatCurrency(c('qty', 'value (1,000$)'), digits = 0, currency = '') %>%
+        DT::formatCurrency(c('qty', 'value (1,000$)', 'weight'), digits = 0, currency = '') %>%
         DT::formatCurrency(c('unit_value', 'ma'), digits = 3, currency = '') %>%
         DT::formatPercentage(c('perc.value', 'perc.qty'), 1)
 
@@ -2060,14 +2066,17 @@ server <- function(input, output, session) {
        return(NULL)
      }
 
-     isolate(
-       datasetInput()$data %>%
+     isolate({
+       res <-
+         datasetInput()$data %>%
          select(
            year = timePointYears,
            qty,
            value,
+           weight,
            flag_qty,
            flag_value,
+           flag_weight,
            unit_value,
            qty_unit,
            median,
@@ -2084,7 +2093,14 @@ server <- function(input, output, session) {
            qty_unit         = if_else(qty_unit == 't', 'tonnes', qty_unit, '(value only?)')
          ) %>%
          rename(`value (1,000$)` = value)
-     )
+
+       if (nrow(filter(res, !is.na(weight))) == 0) {
+         res <- select(res, -weight, -flag_weight)
+       }
+
+       res
+
+     })
 
    }, align = 'r')
 
@@ -2093,25 +2109,28 @@ server <- function(input, output, session) {
        return(NULL)
      }
 
-     isolate(
-       datasetInput()$data %>%
-         select(
-           year       = timePointYears,
-           qty        = qty_mirror,
-           value      = value_mirror,
-           flag_qty   = flag_qty_mirror,
-           flag_value = flag_value_mirror,
-           unit_value = unit_value_mirror,
-           qty_unit
-         ) %>%
-         mutate(
-           qty        = formatNum(qty),
-           value      = formatNum(value),
-           unit_value = formatNum(unit_value),
-           qty_unit   = if_else(qty_unit == 't', 'tonnes', qty_unit, '(value only?)')
-         ) %>%
-         rename(`value (1,000$)` = value)
-     )
+     isolate({
+       res <-
+         datasetInput()$data %>%
+           select(
+             year       = timePointYears,
+             qty        = qty_mirror,
+             value      = value_mirror,
+             weight     = weight_mirror,
+             flag_qty   = flag_qty_mirror,
+             flag_value = flag_value_mirror,
+             unit_value = unit_value_mirror,
+             qty_unit
+           ) %>%
+           mutate(
+             qty        = formatNum(qty),
+             value      = formatNum(value),
+             weight     = formatNum(weight),
+             unit_value = formatNum(unit_value),
+             qty_unit   = if_else(qty_unit == 't', 'tonnes', qty_unit, '(value only?)')
+           ) %>%
+           rename(`value (1,000$)` = value)
+     })
 
    }, align = 'r')
 
