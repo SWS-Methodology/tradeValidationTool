@@ -43,7 +43,7 @@ if (app_mode == 'production') {
   db_file          <- paste0('/work/SWS_R_Share/trade/validation_tool_files/', 'db.rds')
 } else if (app_mode == 'test') {
   corrections_file <- file.path(persistent_files, 'test', 'corrections_table.rds')
-  db_file          <- file.path(persistent_files, 'db.rds')
+  db_file          <- file.path(persistent_files, 'test', 'db.rds')
 } else {
   stop('The "mode" should be either "test" or "production"')
 }
@@ -119,14 +119,6 @@ partners <- c("", sort(unique(db$partner_name)))
 items <- c("", sort(unique(db$item_name)))
 
 years <- c("", sort(unique(db$timePointYears)))
-
-types_correction <- c(
-  'None',
-  'Measurement factor',
-  'Mirror flow',
-  'Outlier correction',
-  'Expert knowledge'
-)
 
 valid_supervisors <- c(
   'katherine.baldwin',
@@ -305,9 +297,7 @@ ui <- function(request) {
           ),
           conditionalPanel(
             condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
-            selectInput("choose_correction",
-              "Choose a type of correction:",
-              types_correction)
+            htmlOutput('choose_correction_ui')
           ),
           conditionalPanel(
             condition = 'input.choose_correction ===  "Measurement factor" & input.year2correct !== ""',
@@ -364,6 +354,11 @@ ui <- function(request) {
             condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0 & input.choose_correction === "Expert knowledge"',
             textInput("note_by_expert",
                       "Mandatory comment/note:")
+          ),
+          conditionalPanel(
+            condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
+            checkboxInput("multiplecorrections",
+              "Multiple corrections?")
           ),
           conditionalPanel(
             condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
@@ -561,6 +556,7 @@ ui <- function(request) {
 # XXX 'session' era richiesto per selezionare un tab, se non si ha
 # questa funzionalità allora si potrebbe eliminare
 server <- function(input, output, session) {
+
 
   corrections_table <- readRDS(corrections_file)
   saveRDS(corrections_table, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M%S'), '\\1'), corrections_file))
@@ -876,8 +872,18 @@ server <- function(input, output, session) {
     my_iframe
   })
 
+types_correction <- c(
+  'None',
+  'Measurement factor',
+  'Mirror flow',
+  'Outlier correction',
+  'Expert knowledge'
+)
+
+
   # https://groups.google.com/d/msg/shiny-discuss/JMqhFhC7QaQ/MzhpACi08FYJ
   values <- reactiveValues(
+    types_correction      = types_correction,
     shouldShow            = TRUE,
     corrections           = corrections_table,
     data_correct          = NA,
@@ -897,6 +903,23 @@ server <- function(input, output, session) {
     unmapped_links        = NA,
     valid_user            = FALSE
   )
+
+  observeEvent(input$multiplecorrections, {
+               values$types_correction <-
+                 if (input$multiplecorrections) {
+                 c(
+                   'Measurement factor'
+                 )
+               } else {
+                 types_correction
+               }
+  })
+
+  output$choose_correction_ui <- renderUI(
+            selectInput("choose_correction",
+              "Choose a type of correction:",
+              values$types_correction)
+            )
 
   observeEvent(input$show_full_table, {
     if (input$outlier_method == 'Fixed threshold') {
@@ -1104,71 +1127,12 @@ server <- function(input, output, session) {
 
   observeEvent(input$okCorrection, {
 
-    # XXX The code below for the Quantity and Value (when != Quantity) is duplicated: refactor
-    values$data_correct <- if (input$variable2correct == 'Quantity') {
-      orig_var_value <- (datasetInput()$data %>%
-                         filter(timePointYears == input$year2correct))[['qty']]
-
-      switch(
-        input$choose_correction,
-        'None'                = orig_var_value,
-        'Measurement factor'  = orig_var_value * as.numeric(input$correction10),
-        'Mirror flow'         = (datasetInput()$data %>%
-          filter(timePointYears == input$year2correct))[['qty_mirror']],
-        # XXX below should be a function or a value stored somewhere
-        'Outlier correction'  = {
-          myvar <- switch(
-            input$correction_outlier,
-            'Moving average'  = 'movav_unit_value',
-            'Median partners' = 'median_uv',
-            'Median world'    = 'median_uv_world'
-          )
-
-          tmp_value <- (datasetInput()$data %>%
-            filter(timePointYears == input$year2correct))[['value']]
-
-          # XXX ugliness 100%
-          s <- datasetInput()[[myvar]]
-
-          tmp_value / as.numeric(s[s$timePointYears == input$year2correct, 2])
-        },
-        'Expert knowledge' = as.numeric(input$correction_expert)
-      )
-    } else { # input$variable2correct == 'Value'
-      orig_var_value <- (datasetInput()$data %>%
-                         filter(timePointYears == input$year2correct))[['value']]
-
-      switch(
-        input$choose_correction,
-        'None'                = orig_var_value,
-        'Measurement factor'  = orig_var_value * as.numeric(input$correction10),
-        'Mirror flow'         = (datasetInput()$data %>%
-          filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(input$flow == '1', 1.12, 1/1.12),
-        # XXX below should be a function or a value stored somewhere
-        'Outlier correction'  = {
-          myvar <- switch(
-            input$correction_outlier,
-            'Moving average'  = 'movav_unit_value',
-            'Median partners' = 'median_uv',
-            'Median world'    = 'median_uv_world'
-          )
-
-          tmp_qty <- (datasetInput()$data %>%
-            filter(timePointYears == input$year2correct))[['qty']]
-
-          # XXX ugliness 100%
-          s <- datasetInput()[[myvar]]
-
-          tmp_qty * as.numeric(s[s$timePointYears == input$year2correct, 2])
-        },
-        'Expert knowledge' = as.numeric(input$correction_expert)
-      )
-    }
+    removeModal()
 
     values$correct_note <- switch(
       input$choose_correction,
       'None'               = NA,
-      'Measurement factor' = NA,
+      'Measurement factor' = ifelse(input$multiplecorrections, 'Multiple corrections', NA),
       'Mirror flow'        = NA,
       'Outlier correction' = input$correction_outlier,
       'Expert knowledge'   = NA
@@ -1180,6 +1144,241 @@ server <- function(input, output, session) {
       values$analyst_note <- input$note_by_analyst_none
     } else {
       values$analyst_note <- input$note_by_analyst
+    }
+
+    reporter_code <- (values$db %>%
+      select(geographicAreaM49Reporter, reporter_name) %>%
+      distinct() %>%
+      filter(reporter_name == input$reporter))[['geographicAreaM49Reporter']]
+
+    item_code <- (values$db %>%
+      select(measuredItemCPC, item_name) %>%
+      distinct() %>%
+      filter(item_name == input$item))[['measuredItemCPC']]
+
+    if (input$multiplecorrections) {
+      db_all_partners <- values$db %>% filter(reporter_name == input$reporter, flow == input$flow, item_name == input$item, timePointYears == input$year2correct)
+
+      all_partners <- unique(db_all_partners$geographicAreaM49Partner)
+
+      progress <- Progress$new(session, min = 1, max = length(all_partners))
+      progress$set(message = 'Calculation in progress', detail = 'This may take a while...')
+      on.exit(progress$close())
+
+
+      string_corrections <- ''
+      for (partner_code in all_partners) {
+
+        # TODO As in the single-correction case, we should check
+        # whether corrections already exist
+        values$dup_correction <- FALSE
+
+        db_single_partner <- db_all_partners %>% filter(geographicAreaM49Partner == partner_code)
+
+        # XXX maybe this check is unnecessary
+        if (nrow(db_single_partner) > 0) {
+          data_original <- if (input$variable2correct == 'Quantity') {
+              db_single_partner[['qty']]
+            } else {
+              db_single_partner[['value']]
+            }
+
+          # XXX this is valid only for 'Measurement factor' as it's
+          # the only one that we allow for multiple corrections.
+          values$data_correct <- data_original * as.numeric(input$correction10)
+
+          corrections_new_row <- data_frame(
+            reporter         = reporter_code,
+            partner          = partner_code,
+            year             = as.integer(input$year2correct),
+            item             = item_code,
+            flow             = as.integer(input$flow),
+            data_original    = data_original,
+            data_type        = ifelse(input$variable2correct == 'Quantity', 'qty', 'value'),
+            correction_level = 'CPC', # XXX not necessarily
+            correction_hs    = NA, # XXX not necessarily (see above)
+            correction_input = as.numeric(values$data_correct),
+            correction_type  = input$choose_correction,
+            correction_note  = values$correct_note,
+            note_analyst     = values$analyst_note,
+            note_supervisor  = NA,
+            name_analyst     = input$choose_analyst,
+            name_supervisor  = NA,
+            date_correction  = format(Sys.time(), "%Y-%m-%d-%H-%M-%S"),
+            date_validation  = NA
+          )
+
+          values$corrections <- combine_corrections(
+            working = values$corrections,
+            file    = corrections_file,
+            new     = corrections_new_row
+          )
+
+          ### XXX SAVECORR
+          saveRDS(values$corrections, corrections_file)
+
+          output$corrections_message <- renderText(
+            paste0(
+              'Last correction saved on ',
+                format(Sys.time(), "%Y-%m-%d"),
+                " (at ", format(Sys.time(), "%H:%M:%S"), ")",
+              ', reporter: ', reporter_code, 
+              ', partner: ' , partner_code, 
+              ', item: '    , item_code, 
+              ', flow: '    , as.integer(input$flow), 
+              ', year: '    , input$year2correct,
+              ', method: '  , input$choose_correction, '.'
+            )
+          )
+
+
+          string_corrections <- paste(string_corrections, partner_code)
+
+          progress$inc(amount = 1)
+
+          Sys.sleep(2) # in order to (try to) prevent overwite issues
+        }
+      }
+      values$xxx <- string_corrections
+      output$corrections_message <-
+        renderText(paste('Corrections were saved for the following partners:',
+                         string_corrections))
+    } else {
+
+      partner_code <- (values$db %>%
+        select(geographicAreaM49Partner, partner_name) %>%
+        distinct() %>%
+        filter(partner_name == input$partner))[['geographicAreaM49Partner']]
+
+      # XXX The code below for the Quantity and Value (when != Quantity) is duplicated: refactor
+      values$data_correct <- if (input$variable2correct == 'Quantity') {
+        orig_var_value <- (datasetInput()$data %>%
+                           filter(timePointYears == input$year2correct))[['qty']]
+
+        switch(
+          input$choose_correction,
+          'None'                = orig_var_value,
+          'Measurement factor'  = orig_var_value * as.numeric(input$correction10),
+          'Mirror flow'         = (datasetInput()$data %>%
+            filter(timePointYears == input$year2correct))[['qty_mirror']],
+          # XXX below should be a function or a value stored somewhere
+          'Outlier correction'  = {
+            myvar <- switch(
+              input$correction_outlier,
+              'Moving average'  = 'movav_unit_value',
+              'Median partners' = 'median_uv',
+              'Median world'    = 'median_uv_world'
+            )
+
+            tmp_value <- (datasetInput()$data %>%
+              filter(timePointYears == input$year2correct))[['value']]
+
+            # XXX ugliness 100%
+            s <- datasetInput()[[myvar]]
+
+            tmp_value / as.numeric(s[s$timePointYears == input$year2correct, 2])
+          },
+          'Expert knowledge' = as.numeric(input$correction_expert)
+        )
+      } else { # input$variable2correct == 'Value'
+        orig_var_value <- (datasetInput()$data %>%
+                           filter(timePointYears == input$year2correct))[['value']]
+
+        switch(
+          input$choose_correction,
+          'None'                = orig_var_value,
+          'Measurement factor'  = orig_var_value * as.numeric(input$correction10),
+          'Mirror flow'         = (datasetInput()$data %>%
+            filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(input$flow == '1', 1.12, 1/1.12),
+          # XXX below should be a function or a value stored somewhere
+          'Outlier correction'  = {
+            myvar <- switch(
+              input$correction_outlier,
+              'Moving average'  = 'movav_unit_value',
+              'Median partners' = 'median_uv',
+              'Median world'    = 'median_uv_world'
+            )
+
+            tmp_qty <- (datasetInput()$data %>%
+              filter(timePointYears == input$year2correct))[['qty']]
+
+            # XXX ugliness 100%
+            s <- datasetInput()[[myvar]]
+
+            tmp_qty * as.numeric(s[s$timePointYears == input$year2correct, 2])
+          },
+          'Expert knowledge' = as.numeric(input$correction_expert)
+        )
+      }
+
+      tmp <- values$corrections %>%
+        filter(
+          reporter == reporter_code,
+          partner == partner_code,
+          flow == as.integer(input$flow),
+          item == item_code,
+          year == as.integer(input$year2correct),
+          data_type == ifelse(input$variable2correct == 'Quantity', 'qty', 'value')
+        )
+
+      if (nrow(tmp) > 0) {
+        output$corrections_message <- renderText('Sorry, the correction
+          cannot be saved as there is already an existing correction.')
+        values$dup_correction <- TRUE
+      } else {
+        values$dup_correction <- FALSE
+
+        data_original <- if (input$variable2correct == 'Quantity') {
+            (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['qty']]
+          } else {
+            (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value']]
+          }
+
+        corrections_new_row <- data_frame(
+          reporter         = reporter_code,
+          partner          = partner_code,
+          year             = as.integer(input$year2correct),
+          item             = item_code,
+          flow             = as.integer(input$flow),
+          data_original    = data_original,
+          data_type        = ifelse(input$variable2correct == 'Quantity', 'qty', 'value'),
+          correction_level = 'CPC', # XXX not necessarily
+          correction_hs    = NA, # XXX not necessarily (see above)
+          correction_input = as.numeric(values$data_correct),
+          correction_type  = input$choose_correction,
+          correction_note  = values$correct_note,
+          note_analyst     = values$analyst_note,
+          note_supervisor  = NA,
+          name_analyst     = input$choose_analyst,
+          name_supervisor  = NA,
+          date_correction  = format(Sys.time(), "%Y-%m-%d-%H-%M-%S"),
+          date_validation  = NA
+        )
+
+        values$corrections <- combine_corrections(
+          working = values$corrections,
+          file    = corrections_file,
+          new     = corrections_new_row
+        )
+
+        ### XXX SAVECORR
+        saveRDS(values$corrections, corrections_file)
+
+        output$corrections_message <- renderText(
+          paste0(
+            'Last correction saved on ',
+              format(Sys.time(), "%Y-%m-%d"),
+              " (at ", format(Sys.time(), "%H:%M:%S"), ")",
+            ', reporter: ', reporter_code, 
+            ', partner: ' , partner_code, 
+            ', item: '    , item_code, 
+            ', flow: '    , as.integer(input$flow), 
+            ', year: '    , input$year2correct,
+            ', method: '  , input$choose_correction, '.'
+          )
+        )
+
+      }
     }
 
   })
@@ -1327,7 +1526,7 @@ server <- function(input, output, session) {
       tab_target = ''
 
       # XXX urlencode
-      values$mydb %>%
+        atable <<- values$mydb %>%
         # Remove mirrored flows. Notice that it happens for the flag_value:
         # It happens that 'T' in flag_qty is a subset of 'T' in flag_value
         # (the remaining non-E flag_qty are either 'I-c' or 'E-s')
@@ -1424,6 +1623,8 @@ server <- function(input, output, session) {
         DT::formatCurrency(c('qty', 'value (1,000$)', 'weight'), digits = 0, currency = '') %>%
         DT::formatCurrency(c('unit_value', 'ma'), digits = 3, currency = '') %>%
         DT::formatPercentage(c('perc.value', 'perc.qty'), 1)
+
+        atable
 
     } else {
       DT::datatable(data.frame(info = 'You cannot access this feature: please, indicate your user name and choose reporter/item.'))
@@ -1527,11 +1728,19 @@ server <- function(input, output, session) {
           )
         )
       } else {
+        add_message <-
+          ifelse(
+            input$multiplecorrections,
+            'You are applying multiple corrections, so it will take a while.
+            As soon as the corrections are applied, this dialog will be closed.',
+            ''
+          )
+
         showModal(
           modalDialog(
             title = "Confirm correction",
-              "By clicking OK you confirm that the correction should be
-              applied and it will be saved.",
+              p("By clicking OK you confirm that the correction should be
+              applied and it will be saved."), p(add_message),
             footer = tagList(
               modalButton("Cancel"),
               actionButton("okCorrection", "OK")
@@ -1612,6 +1821,15 @@ server <- function(input, output, session) {
       'input$year2correct =',
       input$year2correct,
       '<br>',
+      'input$multiplecorrections =',
+      input$multiplecorrections,
+      '<br>',
+      'values$xxx =',
+      values$xxx,
+      '<br>',
+      'input$a_state =',
+      str(input$full_out_table_state),
+      '<br>',
       'comtrade query =',
       paste0('<a href="', comtrade_query, '">', comtrade_query, '</a>')))
   })
@@ -1626,94 +1844,167 @@ server <- function(input, output, session) {
   #            
   #      })
 
-  observeEvent(input$okCorrection, {
+  #observeEvent(input$okCorrection, {
 
-    reporter_code <- (values$db %>%
-      select(geographicAreaM49Reporter, reporter_name) %>%
-      distinct() %>%
-      filter(reporter_name == input$reporter))[['geographicAreaM49Reporter']]
+  #  reporter_code <- (values$db %>%
+  #    select(geographicAreaM49Reporter, reporter_name) %>%
+  #    distinct() %>%
+  #    filter(reporter_name == input$reporter))[['geographicAreaM49Reporter']]
 
-    partner_code <- (values$db %>%
-      select(geographicAreaM49Partner, partner_name) %>%
-      distinct() %>%
-      filter(partner_name == input$partner))[['geographicAreaM49Partner']]
+  #  partner_code <- (values$db %>%
+  #    select(geographicAreaM49Partner, partner_name) %>%
+  #    distinct() %>%
+  #    filter(partner_name == input$partner))[['geographicAreaM49Partner']]
 
-    item_code <- (values$db %>%
-      select(measuredItemCPC, item_name) %>%
-      distinct() %>%
-      filter(item_name == input$item))[['measuredItemCPC']]
+  #  item_code <- (values$db %>%
+  #    select(measuredItemCPC, item_name) %>%
+  #    distinct() %>%
+  #    filter(item_name == input$item))[['measuredItemCPC']]
 
-    tmp <- values$corrections %>%
-      filter(
-        reporter == reporter_code,
-        partner == partner_code,
-        flow == as.integer(input$flow),
-        item == item_code,
-        year == as.integer(input$year2correct),
-        data_type == ifelse(input$variable2correct == 'Quantity', 'qty', 'value')
-      )
+  #  if (input$multiplecorrections) {
+  #    # TODO As in the single-correction case, we should check
+  #    # whether corrections already exist
+  #    values$dup_correction <- FALSE
 
-    if (nrow(tmp) > 0) {
-      output$corrections_message <- renderText('Sorry, the correction
-        cannot be saved as there is already an existing correction.')
-      values$dup_correction <- TRUE
-    } else {
-      values$dup_correction <- FALSE
+  #    db_all_partners <- values$db %>% filter(reporter_name == input$reporter, flow == input$flow, item_name == input$item, timePointYears == input$year2correct)
 
-      data_original <- if (input$variable2correct == 'Quantity') {
-          (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['qty']]
-        } else {
-          (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value']]
-        }
+  #    all_partners <- unique(db_all_partners$geographicAreaM49Partner)
 
-      corrections_new_row <- data_frame(
-        reporter         = reporter_code,
-        partner          = partner_code,
-        year             = as.integer(input$year2correct),
-        item             = item_code,
-        flow             = as.integer(input$flow),
-        data_original    = data_original,
-        data_type        = ifelse(input$variable2correct == 'Quantity', 'qty', 'value'),
-        correction_level = 'CPC', # XXX not necessarily
-        correction_hs    = NA, # XXX not necessarily (see above)
-        correction_input = as.numeric(values$data_correct),
-        correction_type  = input$choose_correction,
-        correction_note  = values$correct_note,
-        note_analyst     = values$analyst_note,
-        note_supervisor  = NA,
-        name_analyst     = input$choose_analyst,
-        name_supervisor  = NA,
-        date_correction  = format(Sys.time(), "%Y-%m-%d-%H-%M-%S"),
-        date_validation  = NA
-      )
+  #    string_corrections <- ''
+  #    for (singlepartner in all_partners) {
 
-      values$corrections <- combine_corrections(
-        working = values$corrections,
-        file    = corrections_file,
-        new     = corrections_new_row
-      )
+  #    db_single_partner <- db_all_partners %>% filter(partner_name == input$partner)
 
-      ### XXX SAVECORR
-      saveRDS(values$corrections, corrections_file)
+  #      if (nrow(db_single_partner) > 0) {
+  #        data_original <- if (input$variable2correct == 'Quantity') {
+  #            db_single_partner[['qty']]
+  #          } else {
+  #            db_single_partner[['value']]
+  #          }
 
-      output$corrections_message <- renderText(
-        paste0(
-          'Last correction saved on ',
-            format(Sys.time(), "%Y-%m-%d"),
-            " (at ", format(Sys.time(), "%H:%M:%S"), ")",
-          ', reporter: ', reporter_code, 
-          ', partner: ' , partner_code, 
-          ', item: '    , item_code, 
-          ', flow: '    , as.integer(input$flow), 
-          ', year: '    , input$year2correct,
-          ', method: '  , input$choose_correction, '.'
-        )
-      )
+  #        #corrections_new_row <- data_frame(
+  #        #  reporter         = reporter_code,
+  #        #  partner          = partner_code,
+  #        #  year             = as.integer(input$year2correct),
+  #        #  item             = item_code,
+  #        #  flow             = as.integer(input$flow),
+  #        #  data_original    = data_original,
+  #        #  data_type        = ifelse(input$variable2correct == 'Quantity', 'qty', 'value'),
+  #        #  correction_level = 'CPC', # XXX not necessarily
+  #        #  correction_hs    = NA, # XXX not necessarily (see above)
+  #        #  correction_input = as.numeric(values$data_correct),
+  #        #  correction_type  = input$choose_correction,
+  #        #  correction_note  = values$correct_note,
+  #        #  note_analyst     = values$analyst_note,
+  #        #  note_supervisor  = NA,
+  #        #  name_analyst     = input$choose_analyst,
+  #        #  name_supervisor  = NA,
+  #        #  date_correction  = format(Sys.time(), "%Y-%m-%d-%H-%M-%S"),
+  #        #  date_validation  = NA
+  #        #)
 
-    }
+  #        #values$corrections <- combine_corrections(
+  #        #  working = values$corrections,
+  #        #  file    = corrections_file,
+  #        #  new     = corrections_new_row
+  #        #)
 
-    removeModal()
-  })
+  #        #### XXX SAVECORR
+  #        #saveRDS(values$corrections, corrections_file)
+
+  #        #output$corrections_message <- renderText(
+  #        #  paste0(
+  #        #    'Last correction saved on ',
+  #        #      format(Sys.time(), "%Y-%m-%d"),
+  #        #      " (at ", format(Sys.time(), "%H:%M:%S"), ")",
+  #        #    ', reporter: ', reporter_code, 
+  #        #    ', partner: ' , partner_code, 
+  #        #    ', item: '    , item_code, 
+  #        #    ', flow: '    , as.integer(input$flow), 
+  #        #    ', year: '    , input$year2correct,
+  #        #    ', method: '  , input$choose_correction, '.'
+  #        #  )
+  #        #)
+
+  #        output$corrections_message <- renderText('XXX HELLO')
+
+  #        string_corrections <- paste(string_corrections, singlepartner)
+  #      }
+  #    }
+  #    values$xxx <- string_corrections
+  #  } else {
+  #    tmp <- values$corrections %>%
+  #      filter(
+  #        reporter == reporter_code,
+  #        partner == partner_code,
+  #        flow == as.integer(input$flow),
+  #        item == item_code,
+  #        year == as.integer(input$year2correct),
+  #        data_type == ifelse(input$variable2correct == 'Quantity', 'qty', 'value')
+  #      )
+
+  #    if (nrow(tmp) > 0) {
+  #      output$corrections_message <- renderText('Sorry, the correction
+  #        cannot be saved as there is already an existing correction.')
+  #      values$dup_correction <- TRUE
+  #    } else {
+  #      values$dup_correction <- FALSE
+
+  #      data_original <- if (input$variable2correct == 'Quantity') {
+  #          (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['qty']]
+  #        } else {
+  #          (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value']]
+  #        }
+
+  #      corrections_new_row <- data_frame(
+  #        reporter         = reporter_code,
+  #        partner          = partner_code,
+  #        year             = as.integer(input$year2correct),
+  #        item             = item_code,
+  #        flow             = as.integer(input$flow),
+  #        data_original    = data_original,
+  #        data_type        = ifelse(input$variable2correct == 'Quantity', 'qty', 'value'),
+  #        correction_level = 'CPC', # XXX not necessarily
+  #        correction_hs    = NA, # XXX not necessarily (see above)
+  #        correction_input = as.numeric(values$data_correct),
+  #        correction_type  = input$choose_correction,
+  #        correction_note  = values$correct_note,
+  #        note_analyst     = values$analyst_note,
+  #        note_supervisor  = NA,
+  #        name_analyst     = input$choose_analyst,
+  #        name_supervisor  = NA,
+  #        date_correction  = format(Sys.time(), "%Y-%m-%d-%H-%M-%S"),
+  #        date_validation  = NA
+  #      )
+
+  #      values$corrections <- combine_corrections(
+  #        working = values$corrections,
+  #        file    = corrections_file,
+  #        new     = corrections_new_row
+  #      )
+
+  #      ### XXX SAVECORR
+  #      saveRDS(values$corrections, corrections_file)
+
+  #      output$corrections_message <- renderText(
+  #        paste0(
+  #          'Last correction saved on ',
+  #            format(Sys.time(), "%Y-%m-%d"),
+  #            " (at ", format(Sys.time(), "%H:%M:%S"), ")",
+  #          ', reporter: ', reporter_code, 
+  #          ', partner: ' , partner_code, 
+  #          ', item: '    , item_code, 
+  #          ', flow: '    , as.integer(input$flow), 
+  #          ', year: '    , input$year2correct,
+  #          ', method: '  , input$choose_correction, '.'
+  #        )
+  #      )
+
+  #    }
+  #  }
+
+  #  removeModal()
+  #})
 
    datasetInput <- reactive({
      if (input$go == 0) {
@@ -2994,3 +3285,4 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui = ui, server = server, enableBookmarking = 'url')
+
