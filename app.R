@@ -1526,7 +1526,7 @@ types_correction <- c(
       tab_target = ''
 
       # XXX urlencode
-        atable <<- values$mydb %>%
+        values$mydb %>%
         # Remove mirrored flows. Notice that it happens for the flag_value:
         # It happens that 'T' in flag_qty is a subset of 'T' in flag_value
         # (the remaining non-E flag_qty are either 'I-c' or 'E-s')
@@ -1623,8 +1623,6 @@ types_correction <- c(
         DT::formatCurrency(c('qty', 'value (1,000$)', 'weight'), digits = 0, currency = '') %>%
         DT::formatCurrency(c('unit_value', 'ma'), digits = 3, currency = '') %>%
         DT::formatPercentage(c('perc.value', 'perc.qty'), 1)
-
-        atable
 
     } else {
       DT::datatable(data.frame(info = 'You cannot access this feature: please, indicate your user name and choose reporter/item.'))
