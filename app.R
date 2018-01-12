@@ -252,7 +252,7 @@ ui <- function(request) {
           #uiOutput("partner"),
           conditionalPanel(
             condition = 'input.go_db > 0',
-            selectInput("flow", "Choose a flow:", c(import = 1, export = 2))
+            selectInput("flow", "Choose a flow:", c("", import = 1, export = 2))
           ),
           conditionalPanel(
             condition = 'input.go_db > 0',
@@ -273,36 +273,11 @@ ui <- function(request) {
           # XXX substitute this with CSS
           p(),
           p(),
-          conditionalPanel(
-            condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
-            strong('Corrections')
-          ),
-          conditionalPanel(
-            condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
-            selectInput("variable2correct",
-              "Variable to correct:",
-              c('Quantity', 'Value'))
-          ),
-          conditionalPanel(
-            condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
-            selectInput("year2correct",
-              "Choose a year to correct:",
-              years)
-          ),
-          conditionalPanel(
-            condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
-            selectInput("choose_analyst",
-              "Analyst name:",
-              c('', valid_analysts))
-          ),
-          conditionalPanel(
-            condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
-            htmlOutput('choose_correction_ui')
-          ),
-          conditionalPanel(
-            condition = 'input.choose_correction ===  "Measurement factor" & input.year2correct !== ""',
-            htmlOutput('suggest10')
-          ),
+          htmlOutput('corrections_separator'),
+          htmlOutput('variable2correct'),
+          htmlOutput('year2correct'),
+          htmlOutput('choose_correction_ui'),
+          htmlOutput('suggest10'),
           conditionalPanel(
             condition = 'input.choose_correction ===  "Expert knowledge"',
             htmlOutput('suggestexpert')
@@ -315,12 +290,7 @@ ui <- function(request) {
             condition = 'input.choose_correction ===  "Outlier correction" & input.year2correct !== ""',
             htmlOutput('suggestoutlier')
           ),
-          conditionalPanel(
-            condition = 'input.choose_correction ===  "Measurement factor"',
-            selectInput("correction10",
-              "Choose a correction to qty:",
-              c(0.0001, 0.001, 0.01, 0.1, 10, 100, 1000, 10000))
-          ),
+          htmlOutput('correction10'),
           conditionalPanel(
             condition = 'input.choose_correction ===  "Outlier correction"',
             selectInput("correction_outlier",
@@ -360,11 +330,7 @@ ui <- function(request) {
             checkboxInput("multiplecorrections",
               "Multiple corrections?")
           ),
-          conditionalPanel(
-            condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
-            actionButton("go10",
-              "Apply correction")
-          ),
+          htmlOutput('go10'),
           conditionalPanel(
             condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
             actionButton("goremove",
@@ -581,7 +547,78 @@ server <- function(input, output, session) {
                 '))
   })
 
-  output$show_username = renderText({
+  output$corrections_separator <- renderUI({
+    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+      strong('Corrections')
+    } else {
+      NULL
+    }
+  })
+
+  output$suggest10 <- renderUI({
+    if (values$choose_correction == "Measurement factor" && values$year2correct != "") {
+      powers(
+        datasetInput()$data %>%
+          filter(timePointYears == input$year2correct) %>%
+          select(unit_value),
+        datasetInput()$median_uv %>%
+          filter(timePointYears == input$year2correct) %>%
+          select(median)
+      )
+    } else {
+      NULL
+    }
+  })
+
+  output$variable2correct <- renderUI({
+    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+      selectInput("variable2correct",
+        "Variable to correct:",
+        c('Quantity', 'Value'))
+    } else {
+      NULL
+    }
+  })
+
+  output$year2correct <- renderUI({
+    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+      selectInput("year2correct",
+        "Choose a year to correct:",
+        years)
+    } else {
+      NULL
+    }
+  })
+
+  output$correction10 <- renderUI({
+    if (values$choose_correction == "Measurement factor") {
+      selectInput("correction10",
+        "Choose a correction to qty:",
+        c(0.0001, 0.001, 0.01, 0.1, 10, 100, 1000, 10000))
+    } else {
+      NULL
+    }
+  })
+
+  output$go10 <- renderUI({
+    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+      actionButton("go10", "Apply correction")
+    } else {
+      NULL
+    }
+  })
+
+  output$choose_correction_ui <- renderUI({
+    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+      selectInput("choose_correction",
+        "Choose a type of correction:",
+        values$types_correction)
+    } else {
+      NULL
+    }
+  })
+
+  output$show_username <- renderText({
       if (length(input$cookies$username) == 0) {
         paste('No user name')
       } else {
@@ -901,8 +938,22 @@ types_correction <- c(
     db_imputed            = NA,
     test_s                = NA,
     unmapped_links        = NA,
-    valid_user            = FALSE
+    valid_user            = FALSE,
+    reporter              = NA,
+    partner               = NA,
+    item                  = NA,
+    flow                  = NA,
+    choose_correction     = NA,
+    year2correct          = NA
   )
+
+
+  observeEvent(input$partner, {values$partner <- input$partner})
+  observeEvent(input$reporter, {values$reporter <- input$reporter})
+  observeEvent(input$item, {values$item <- input$item})
+  observeEvent(input$flow, {values$flow <- input$flow})
+  observeEvent(input$choose_correction, {values$choose_correction <- input$choose_correction})
+  observeEvent(input$year2correct, {values$year2correct <- input$year2correct})
 
   observeEvent(input$multiplecorrections, {
                values$types_correction <-
@@ -914,12 +965,6 @@ types_correction <- c(
                  types_correction
                }
   })
-
-  output$choose_correction_ui <- renderUI(
-            selectInput("choose_correction",
-              "Choose a type of correction:",
-              values$types_correction)
-            )
 
   observeEvent(input$show_full_table, {
     if (input$outlier_method == 'Fixed threshold') {
@@ -1149,15 +1194,15 @@ types_correction <- c(
     reporter_code <- (values$db %>%
       select(geographicAreaM49Reporter, reporter_name) %>%
       distinct() %>%
-      filter(reporter_name == input$reporter))[['geographicAreaM49Reporter']]
+      filter(reporter_name == values$reporter))[['geographicAreaM49Reporter']]
 
     item_code <- (values$db %>%
       select(measuredItemCPC, item_name) %>%
       distinct() %>%
-      filter(item_name == input$item))[['measuredItemCPC']]
+      filter(item_name == values$item))[['measuredItemCPC']]
 
     if (input$multiplecorrections) {
-      db_all_partners <- values$db %>% filter(reporter_name == input$reporter, flow == input$flow, item_name == input$item, timePointYears == input$year2correct)
+      db_all_partners <- values$db %>% filter(reporter_name == values$reporter, flow == values$flow, item_name == values$item, timePointYears == input$year2correct)
 
       all_partners <- unique(db_all_partners$geographicAreaM49Partner)
 
@@ -1192,7 +1237,7 @@ types_correction <- c(
             partner          = partner_code,
             year             = as.integer(input$year2correct),
             item             = item_code,
-            flow             = as.integer(input$flow),
+            flow             = as.integer(values$flow),
             data_original    = data_original,
             data_type        = ifelse(input$variable2correct == 'Quantity', 'qty', 'value'),
             correction_level = 'CPC', # XXX not necessarily
@@ -1202,7 +1247,7 @@ types_correction <- c(
             correction_note  = values$correct_note,
             note_analyst     = values$analyst_note,
             note_supervisor  = NA,
-            name_analyst     = input$choose_analyst,
+            name_analyst     = input$cookies$username,
             name_supervisor  = NA,
             date_correction  = format(Sys.time(), "%Y-%m-%d-%H-%M-%S"),
             date_validation  = NA
@@ -1225,7 +1270,7 @@ types_correction <- c(
               ', reporter: ', reporter_code, 
               ', partner: ' , partner_code, 
               ', item: '    , item_code, 
-              ', flow: '    , as.integer(input$flow), 
+              ', flow: '    , as.integer(values$flow), 
               ', year: '    , input$year2correct,
               ', method: '  , input$choose_correction, '.'
             )
@@ -1248,7 +1293,7 @@ types_correction <- c(
       partner_code <- (values$db %>%
         select(geographicAreaM49Partner, partner_name) %>%
         distinct() %>%
-        filter(partner_name == input$partner))[['geographicAreaM49Partner']]
+        filter(partner_name == values$partner))[['geographicAreaM49Partner']]
 
       # XXX The code below for the Quantity and Value (when != Quantity) is duplicated: refactor
       values$data_correct <- if (input$variable2correct == 'Quantity') {
@@ -1289,7 +1334,7 @@ types_correction <- c(
           'None'                = orig_var_value,
           'Measurement factor'  = orig_var_value * as.numeric(input$correction10),
           'Mirror flow'         = (datasetInput()$data %>%
-            filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(input$flow == '1', 1.12, 1/1.12),
+            filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(values$flow == '1', 1.12, 1/1.12),
           # XXX below should be a function or a value stored somewhere
           'Outlier correction'  = {
             myvar <- switch(
@@ -1315,7 +1360,7 @@ types_correction <- c(
         filter(
           reporter == reporter_code,
           partner == partner_code,
-          flow == as.integer(input$flow),
+          flow == as.integer(values$flow),
           item == item_code,
           year == as.integer(input$year2correct),
           data_type == ifelse(input$variable2correct == 'Quantity', 'qty', 'value')
@@ -1339,7 +1384,7 @@ types_correction <- c(
           partner          = partner_code,
           year             = as.integer(input$year2correct),
           item             = item_code,
-          flow             = as.integer(input$flow),
+          flow             = as.integer(values$flow),
           data_original    = data_original,
           data_type        = ifelse(input$variable2correct == 'Quantity', 'qty', 'value'),
           correction_level = 'CPC', # XXX not necessarily
@@ -1349,7 +1394,7 @@ types_correction <- c(
           correction_note  = values$correct_note,
           note_analyst     = values$analyst_note,
           note_supervisor  = NA,
-          name_analyst     = input$choose_analyst,
+          name_analyst     = input$cookies$username,
           name_supervisor  = NA,
           date_correction  = format(Sys.time(), "%Y-%m-%d-%H-%M-%S"),
           date_validation  = NA
@@ -1372,7 +1417,7 @@ types_correction <- c(
             ', reporter: ', reporter_code, 
             ', partner: ' , partner_code, 
             ', item: '    , item_code, 
-            ', flow: '    , as.integer(input$flow), 
+            ', flow: '    , as.integer(values$flow), 
             ', year: '    , input$year2correct,
             ', method: '  , input$choose_correction, '.'
           )
@@ -1489,7 +1534,7 @@ types_correction <- c(
         select(flow, reporter_name, partner_name,  item_name) %>%
         distinct() %>%
         filter(
-          reporter_name == input$reporter
+          reporter_name == values$reporter
           ))$partner_name)
     } else {
       xpartners <- partners
@@ -1504,9 +1549,9 @@ types_correction <- c(
         select(flow, reporter_name, partner_name,  item_name) %>%
         distinct() %>%
         filter(
-          reporter_name == input$reporter,
-          partner_name == input$partner,
-          flow == input$flow
+          reporter_name == values$reporter,
+          partner_name == values$partner,
+          flow == values$flow
           ))$item_name)
     } else {
       xitems <- items
@@ -1514,6 +1559,15 @@ types_correction <- c(
 
     selectInput("item", "Choose an item:", xitems)
   })
+
+    observeEvent(input$full_out_table_rows_selected, {
+                     xxx <- values$mydb %>% filter(out == 1L, !grepl('T', flag_value))
+                     idx <- input$full_out_table_rows_selected
+                     values$reporter = xxx$reporter_name[idx]
+                     values$partner  = xxx$partner_name[idx]
+                     values$item     = xxx$item_name[idx]
+                     values$flow     = xxx$flow[idx]
+                       })
 
   # http://stackoverflow.com/questions/29803310/r-shiny-build-links-between-tabs-with-dt-package
   output$full_out_table <- DT::renderDataTable({
@@ -1546,29 +1600,7 @@ types_correction <- c(
             'timePointYears' = 'year'
             )
         ) %>%
-        # XXX this slows down the thing. TODO: improve it!
-        mutate(
-          url = paste0(
-            '<a class = "link-to-plots" href="',
-            #DT::JS("document.querySelectorAll('[data-value]')[1].getAttribute('href')"),
-            '?_inputs_&reporter=%22',
-            reporter_name,
-            '%22&partner=%22',
-            partner_name,
-            '%22&flow=%22',
-            flow,
-            '%22&item=%22',
-            stringr::str_replace_all(item_name, '%', '%25'),
-            '%22&go=%221%22&go_db=%221%22&reporter_start=%22',
-            input$reporter_start,
-            '%22&item_start=%22',
-            input$item_start, '%22"',
-            tab_target,
-            '>link</a>'
-          )
-        ) %>%
         select(
-          url,
           reporter_name,
           partner_name,
           item_name,
@@ -1599,6 +1631,14 @@ types_correction <- c(
           qty_unit = if_else(qty_unit == 't', 'tonnes', qty_unit, '(value only?)')
         ) %>%
         DT::datatable(
+          callback =
+            DT::JS(
+              '$("tbody").on("click.dt", "tr", function() {
+                 tabs = $("#main li a");
+                 $(tabs[0]).click();
+                 $("#go").click()
+                 });'
+            ),
           #### #callback = DT::JS(
           #### #     'table.on("click.dt", "tr", function() {
           #### #       tabs = $(".nav.navbar-nav li a");
@@ -1798,6 +1838,15 @@ types_correction <- c(
       'input$gousername =',
       input$gousername,
       '<br>',
+      'input$reporter =',
+      input$reporter,
+      '<br>',
+      'input$reporter_start =',
+      input$reporter_start,
+      '<br>',
+      'input$item_start =',
+      input$item_start,
+      '<br>',
       'input$go =',
       input$go,
       '<br>',
@@ -1847,31 +1896,31 @@ types_correction <- c(
   #  reporter_code <- (values$db %>%
   #    select(geographicAreaM49Reporter, reporter_name) %>%
   #    distinct() %>%
-  #    filter(reporter_name == input$reporter))[['geographicAreaM49Reporter']]
+  #    filter(reporter_name == values$reporter))[['geographicAreaM49Reporter']]
 
   #  partner_code <- (values$db %>%
   #    select(geographicAreaM49Partner, partner_name) %>%
   #    distinct() %>%
-  #    filter(partner_name == input$partner))[['geographicAreaM49Partner']]
+  #    filter(partner_name == values$partner))[['geographicAreaM49Partner']]
 
   #  item_code <- (values$db %>%
   #    select(measuredItemCPC, item_name) %>%
   #    distinct() %>%
-  #    filter(item_name == input$item))[['measuredItemCPC']]
+  #    filter(item_name == values$item))[['measuredItemCPC']]
 
   #  if (input$multiplecorrections) {
   #    # TODO As in the single-correction case, we should check
   #    # whether corrections already exist
   #    values$dup_correction <- FALSE
 
-  #    db_all_partners <- values$db %>% filter(reporter_name == input$reporter, flow == input$flow, item_name == input$item, timePointYears == input$year2correct)
+  #    db_all_partners <- values$db %>% filter(reporter_name == values$reporter, flow == values$flow, item_name == values$item, timePointYears == input$year2correct)
 
   #    all_partners <- unique(db_all_partners$geographicAreaM49Partner)
 
   #    string_corrections <- ''
   #    for (singlepartner in all_partners) {
 
-  #    db_single_partner <- db_all_partners %>% filter(partner_name == input$partner)
+  #    db_single_partner <- db_all_partners %>% filter(partner_name == values$partner)
 
   #      if (nrow(db_single_partner) > 0) {
   #        data_original <- if (input$variable2correct == 'Quantity') {
@@ -1885,7 +1934,7 @@ types_correction <- c(
   #        #  partner          = partner_code,
   #        #  year             = as.integer(input$year2correct),
   #        #  item             = item_code,
-  #        #  flow             = as.integer(input$flow),
+  #        #  flow             = as.integer(values$flow),
   #        #  data_original    = data_original,
   #        #  data_type        = ifelse(input$variable2correct == 'Quantity', 'qty', 'value'),
   #        #  correction_level = 'CPC', # XXX not necessarily
@@ -1895,7 +1944,7 @@ types_correction <- c(
   #        #  correction_note  = values$correct_note,
   #        #  note_analyst     = values$analyst_note,
   #        #  note_supervisor  = NA,
-  #        #  name_analyst     = input$choose_analyst,
+  #        #  name_analyst     = input$cookies$username,
   #        #  name_supervisor  = NA,
   #        #  date_correction  = format(Sys.time(), "%Y-%m-%d-%H-%M-%S"),
   #        #  date_validation  = NA
@@ -1918,7 +1967,7 @@ types_correction <- c(
   #        #    ', reporter: ', reporter_code, 
   #        #    ', partner: ' , partner_code, 
   #        #    ', item: '    , item_code, 
-  #        #    ', flow: '    , as.integer(input$flow), 
+  #        #    ', flow: '    , as.integer(values$flow), 
   #        #    ', year: '    , input$year2correct,
   #        #    ', method: '  , input$choose_correction, '.'
   #        #  )
@@ -1935,7 +1984,7 @@ types_correction <- c(
   #      filter(
   #        reporter == reporter_code,
   #        partner == partner_code,
-  #        flow == as.integer(input$flow),
+  #        flow == as.integer(values$flow),
   #        item == item_code,
   #        year == as.integer(input$year2correct),
   #        data_type == ifelse(input$variable2correct == 'Quantity', 'qty', 'value')
@@ -1959,7 +2008,7 @@ types_correction <- c(
   #        partner          = partner_code,
   #        year             = as.integer(input$year2correct),
   #        item             = item_code,
-  #        flow             = as.integer(input$flow),
+  #        flow             = as.integer(values$flow),
   #        data_original    = data_original,
   #        data_type        = ifelse(input$variable2correct == 'Quantity', 'qty', 'value'),
   #        correction_level = 'CPC', # XXX not necessarily
@@ -1969,7 +2018,7 @@ types_correction <- c(
   #        correction_note  = values$correct_note,
   #        note_analyst     = values$analyst_note,
   #        note_supervisor  = NA,
-  #        name_analyst     = input$choose_analyst,
+  #        name_analyst     = input$cookies$username,
   #        name_supervisor  = NA,
   #        date_correction  = format(Sys.time(), "%Y-%m-%d-%H-%M-%S"),
   #        date_validation  = NA
@@ -1992,7 +2041,7 @@ types_correction <- c(
   #          ', reporter: ', reporter_code, 
   #          ', partner: ' , partner_code, 
   #          ', item: '    , item_code, 
-  #          ', flow: '    , as.integer(input$flow), 
+  #          ', flow: '    , as.integer(values$flow), 
   #          ', year: '    , input$year2correct,
   #          ', method: '  , input$choose_correction, '.'
   #        )
@@ -2012,25 +2061,11 @@ types_correction <- c(
      isolate(
        choose_data(
          data      = values$db,
-         .flow     = input$flow,
-         .reporter = input$reporter,
-         .partner  = input$partner,
-         .item     = input$item
+         .flow     = values$flow,
+         .reporter = values$reporter,
+         .partner  = values$partner,
+         .item     = values$item
        )
-     )
-   })
-
-   output$suggest10 <- renderText({
-
-     # XXX Dovrebbe essere fatto con isolate()
-
-     powers(
-       datasetInput()$data %>%
-         filter(timePointYears == input$year2correct) %>%
-         select(unit_value),
-       datasetInput()$median_uv %>%
-         filter(timePointYears == input$year2correct) %>%
-         select(median)
      )
    })
 
@@ -2645,7 +2680,7 @@ types_correction <- c(
              ) +
              labs(
                title = 'Unit value',
-               subtitle = paste('Reporter:', input$reporter, '- Partner:', input$partner, '- Item:', input$item)
+               subtitle = paste('Reporter:', values$reporter, '- Partner:', values$partner, '- Item:', values$item)
              ) #+
              #geom_line(data = s[!is.na(s$value),], aes(y = value), linetype = 2, size = 1)
 
@@ -2675,7 +2710,7 @@ types_correction <- c(
            fun_plot(out = TRUE) +
              scale_size_manual(values = c('unit_value' = 2, 'median' = 1.5, 'median_world' = 1, 'movav_unit_value' = 1.5, 'unit_value_mirror' = 1)) +
              scale_colour_manual(values = c('unit_value' = 'red', 'median' = 'yellow', 'median_world' = 'green', 'movav_unit_value' = 'orange', 'unit_value_mirror' = 'purple')) +
-             labs(title = 'Unit value', subtitle = paste('Reporter:', input$reporter, '- Partner:', input$partner, '- Item:', input$item)) #+
+             labs(title = 'Unit value', subtitle = paste('Reporter:', values$reporter, '- Partner:', values$partner, '- Item:', values$item)) #+
              #geom_line(data = d_imputed[!is.na(s$value),], aes(y = value), linetype = 2, size = 1)
 
          if (input$choose_correction == 'Mirror flow') {
@@ -2764,12 +2799,12 @@ types_correction <- c(
            fun_plot(out = TRUE) +
              scale_size_manual(values = c('unit_value' = 2, 'median' = 1.5, 'median_world' = 1, 'movav_unit_value' = 1.5, 'unit_value_mirror' = 1)) +
              scale_colour_manual(values = c('unit_value' = 'red', 'median' = 'yellow', 'median_world' = 'green', 'movav_unit_value' = 'orange', 'unit_value_mirror' = 'purple')) +
-             labs(title = 'Unit value', subtitle = paste('Reporter:', input$reporter, '- Partner:', input$partner, '- Item:', input$item)) #+
+             labs(title = 'Unit value', subtitle = paste('Reporter:', values$reporter, '- Partner:', values$partner, '- Item:', values$item)) #+
              #geom_line(data = d_imputed[!is.na(s$value),], aes(y = value), linetype = 2, size = 1)
 
          if (input$choose_correction == 'Mirror flow') {
            tmp_qty <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['qty']]
-           tmp_value <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(input$flow == '1', 1.12, 1/1.12)
+           tmp_value <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(values$flow == '1', 1.12, 1/1.12)
 
            myplotUV_imputed$data <- myplotUV_imputed$data %>%
              mutate_db_imputed(
@@ -2863,7 +2898,7 @@ types_correction <- c(
                  'value_mirror' = 'purple'
                )
              ) +
-             labs(title = 'Value', subtitle = paste('Reporter:', input$reporter, '- Partner:', input$partner, '- Item:', input$item)) #+
+             labs(title = 'Value', subtitle = paste('Reporter:', values$reporter, '- Partner:', values$partner, '- Item:', values$item)) #+
              #geom_line(data = s[!is.na(s$value),], aes(y = value), linetype = 2, size = 1)
 
          myplotValue
@@ -2886,12 +2921,12 @@ types_correction <- c(
                  'value_mirror' = 'purple'
                )
              ) +
-           labs(title = 'Value', subtitle = paste('Reporter:', input$reporter, '- Partner:', input$partner, '- Item:', input$item)) #+
+           labs(title = 'Value', subtitle = paste('Reporter:', values$reporter, '- Partner:', values$partner, '- Item:', values$item)) #+
            #geom_line(data = s[!is.na(s$value),], aes(y = value), linetype = 2, size = 1)
 
        if (input$variable2correct == 'Value') {
          if (input$choose_correction == 'Mirror flow') {
-           tmp <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(input$flow == '1', 1.12, 1/1.12)
+           tmp <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(values$flow == '1', 1.12, 1/1.12)
 
             myplotValue_imputed$data <- myplotValue_imputed$data %>%
               mutate_db_imputed(
@@ -3132,7 +3167,7 @@ types_correction <- c(
                  'qty_mirror' = 'purple'
                )
              ) +
-             labs(title = 'Quantity', subtitle = paste('Reporter:', input$reporter, '- Partner:', input$partner, '- Item:', input$item)) #+
+             labs(title = 'Quantity', subtitle = paste('Reporter:', values$reporter, '- Partner:', values$partner, '- Item:', values$item)) #+
              #geom_line(data = s[!is.na(s$value),], aes(y = value), linetype = 2, size = 1)
 
          myplotQuantity
@@ -3155,7 +3190,7 @@ types_correction <- c(
                  'qty_mirror' = 'purple'
                )
              ) +
-           labs(title = 'Quantity', subtitle = paste('Reporter:', input$reporter, '- Partner:', input$partner, '- Item:', input$item)) #+
+           labs(title = 'Quantity', subtitle = paste('Reporter:', values$reporter, '- Partner:', values$partner, '- Item:', values$item)) #+
            #geom_line(data = s[!is.na(s$value),], aes(y = value), linetype = 2, size = 1)
 
        if (input$variable2correct == 'Quantity') {
@@ -3283,4 +3318,3 @@ types_correction <- c(
 }
 
 shinyApp(ui = ui, server = server, enableBookmarking = 'url')
-
