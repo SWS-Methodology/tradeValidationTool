@@ -495,9 +495,9 @@ ui <- function(request) {
   ###   #rHandsontableOutput('mapping')
   ###)
   ### ),
-   tabPanel('module/FAOSTAT flows', 
-            htmlOutput('myiframe1')
-            ),
+  ## tabPanel('module/FAOSTAT flows', 
+  ##          htmlOutput('myiframe1')
+  ##          ),
    tabPanel('Help', 
      HTML(markdown::markdownToHTML(help_file, fragment.only = TRUE))
    ),
@@ -911,11 +911,11 @@ server <- function(input, output, session) {
 
   USERNAME <- NA
 
-  output$myiframe1 <- renderUI({
-    my_iframe <- tags$iframe(src = page_flows, height = '800px', width = '100%')
-    #print(my_iframe)
-    my_iframe
-  })
+  ## output$myiframe1 <- renderUI({
+  ##   my_iframe <- tags$iframe(src = page_flows, height = '800px', width = '100%')
+  ##   #print(my_iframe)
+  ##   my_iframe
+  ## })
 
 types_correction <- c(
   'None',
