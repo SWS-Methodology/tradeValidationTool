@@ -331,16 +331,8 @@ ui <- function(request) {
               "Multiple corrections?")
           ),
           htmlOutput('go10'),
-          conditionalPanel(
-            condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
-            actionButton("goremove",
-                         "Hide old series")
-          ),
-          conditionalPanel(
-            condition = 'input.reporter !== "" & input.partner !== "" & input.item !== "" & input.go > 0',
-            actionButton("confirm_correction",
-                         "Confirm correction")
-          ),
+          htmlOutput('goremove'),
+          htmlOutput('confirm_correction'),
           htmlOutput("dup_corr"),
           #conditionalPanel(
           #  condition = 'input.go > 0',
@@ -556,7 +548,7 @@ server <- function(input, output, session) {
   })
 
   output$suggest10 <- renderUI({
-    if (values$choose_correction == "Measurement factor" && values$year2correct != "") {
+    if (identical(values$choose_correction, "Measurement factor") && !identical(values$year2correct,  "")) {
       powers(
         datasetInput()$data %>%
           filter(timePointYears == input$year2correct) %>%
@@ -591,7 +583,7 @@ server <- function(input, output, session) {
   })
 
   output$correction10 <- renderUI({
-    if (values$choose_correction == "Measurement factor") {
+    if (identical(values$choose_correction, "Measurement factor")) {
       selectInput("correction10",
         "Choose a correction to qty:",
         c(0.0001, 0.001, 0.01, 0.1, 10, 100, 1000, 10000))
@@ -603,6 +595,22 @@ server <- function(input, output, session) {
   output$go10 <- renderUI({
     if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
       actionButton("go10", "Apply correction")
+    } else {
+      NULL
+    }
+  })
+
+  output$goremove <- renderUI({
+    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+      actionButton("goremove", "Hide old series")
+    } else {
+      NULL
+    }
+  })
+
+  output$confirm_correction <- renderUI({
+    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+      actionButton("confirm_correction", "Confirm correction")
     } else {
       NULL
     }
@@ -1485,7 +1493,7 @@ types_correction <- c(
 
   output$units_measurement <- renderUI({
     unqty <- unique(datasetInput()$data$qty_unit)
-    if (unqty == 't') {
+    if (identical(unqty, 't')) {
       unqty <- 'tonnes'
     } else if (is.na(unqty)) {
       unqty <- 'unspecified (value only?)'
