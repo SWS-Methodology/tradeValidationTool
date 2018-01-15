@@ -118,7 +118,7 @@ partners <- c("", sort(unique(db$partner_name)))
 
 items <- c("", sort(unique(db$item_name)))
 
-years <- c("", sort(unique(db$timePointYears)))
+years <- c("", rev(sort(unique(db$timePointYears))))
 
 valid_supervisors <- c(
   'katherine.baldwin',
@@ -576,7 +576,7 @@ server <- function(input, output, session) {
     if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
       selectInput("year2correct",
         "Choose a year to correct:",
-        rev(years))
+        years)
     } else {
       NULL
     }
