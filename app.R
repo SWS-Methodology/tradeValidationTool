@@ -471,30 +471,30 @@ ui <- function(request) {
          )
        )
    ),
-   tabPanel('Mapping', 
-            fluidPage(
-     fluidRow(
-    column(4,
-      #fileInput('mapping_file', 'Choose file', accept = c('text/csv', 'text/comma-separated-values,text/plain', '.csv'))
-      fileInput('mapping_file', 'Choose file', accept = '.xlsx')
-    ),
-    column(4,
-       downloadButton('down_mapped', 'Download mappped codes')
-      ),
-    column(4,
-      downloadButton('down_unmapped', 'Download unmapped codes')
-    )
-  ),
-  fluidRow(
-    column(12,
-      DT::dataTableOutput('mapping')
-    )  
-  )
-     #fileInput('mapping_file', 'Choose file', accept = c('text/csv', 'text/comma-separated-values,text/plain', '.csv')),
-     #downloadButton('down_mapping', 'Download mapping'),
-     #rHandsontableOutput('mapping')
-  )
-   ),
+  ### tabPanel('Mapping', 
+  ###          fluidPage(
+  ###   fluidRow(
+  ###  column(4,
+  ###    #fileInput('mapping_file', 'Choose file', accept = c('text/csv', 'text/comma-separated-values,text/plain', '.csv'))
+  ###    fileInput('mapping_file', 'Choose file', accept = '.xlsx')
+  ###  ),
+  ###  column(4,
+  ###     downloadButton('down_mapped', 'Download mappped codes')
+  ###    ),
+  ###  column(4,
+  ###    downloadButton('down_unmapped', 'Download unmapped codes')
+  ###  )
+  ###),
+  ###fluidRow(
+  ###  column(12,
+  ###    DT::dataTableOutput('mapping')
+  ###  )  
+  ###)
+  ###   #fileInput('mapping_file', 'Choose file', accept = c('text/csv', 'text/comma-separated-values,text/plain', '.csv')),
+  ###   #downloadButton('down_mapping', 'Download mapping'),
+  ###   #rHandsontableOutput('mapping')
+  ###)
+  ### ),
    tabPanel('module/FAOSTAT flows', 
             htmlOutput('myiframe1')
             ),
@@ -2187,176 +2187,176 @@ types_correction <- c(
      }
    })
 
-   output$mapping <- DT::renderDataTable({
-     upFile <- input$mapping_file
+   ## output$mapping <- DT::renderDataTable({
+   ##   upFile <- input$mapping_file
 
-     if (is.null(upFile)) {
-       return(NULL)
-     } else {
-       # https://stackoverflow.com/questions/30624201/read-excel-in-a-shiny-app
+   ##   if (is.null(upFile)) {
+   ##     return(NULL)
+   ##   } else {
+   ##     # https://stackoverflow.com/questions/30624201/read-excel-in-a-shiny-app
 
-       file.rename(upFile$datapath, paste(upFile$datapath, ".xlsx", sep=""))
+   ##     file.rename(upFile$datapath, paste(upFile$datapath, ".xlsx", sep=""))
 
-       add_map <- read_excel(paste0(upFile$datapath, '.xlsx'),
-                             col_types = c('text', 'numeric', 'numeric', 'text', 'numeric', 'text', 'text', 'text', 'numeric', 'text', 'text'),
-                             sheet = 'unmapped_hs_2000_2015', na = 'NA')
+   ##     add_map <- read_excel(paste0(upFile$datapath, '.xlsx'),
+   ##                           col_types = c('text', 'numeric', 'numeric', 'text', 'numeric', 'text', 'text', 'text', 'numeric', 'text', 'text'),
+   ##                           sheet = 'unmapped_hs_2000_2015', na = 'NA')
 
-       add_map <- add_map[,!(colnames(add_map) == '')]
+   ##     add_map <- add_map[,!(colnames(add_map) == '')]
 
-       add_map <- add_map %>%
-         filter(!is.na(year), !is.na(reporter_fao), !is.na(hs)) %>%
-         mutate(
-           hs = ifelse(
-                  hs_chap < 10 & stringr::str_sub(hs, 1, 1) != '0',
-                  paste0('0', formatC(hs, format = 'fg')),
-                  formatC(hs, format = 'fg')
-                ) 
-         ) %>%
-         arrange(reporter_fao, flow, hs, year)
+   ##     add_map <- add_map %>%
+   ##       filter(!is.na(year), !is.na(reporter_fao), !is.na(hs)) %>%
+   ##       mutate(
+   ##         hs = ifelse(
+   ##                hs_chap < 10 & stringr::str_sub(hs, 1, 1) != '0',
+   ##                paste0('0', formatC(hs, format = 'fg')),
+   ##                formatC(hs, format = 'fg')
+   ##              ) 
+   ##       ) %>%
+   ##       arrange(reporter_fao, flow, hs, year)
 
-         # Check that all FCL codes are valid
+   ##       # Check that all FCL codes are valid
 
-         fcl_diff <- setdiff(unique(add_map$fcl), fcl_codes)
+   ##       fcl_diff <- setdiff(unique(add_map$fcl), fcl_codes)
 
-         fcl_diff <- fcl_diff[!is.na(fcl_diff)]
+   ##       fcl_diff <- fcl_diff[!is.na(fcl_diff)]
 
-         if (length(fcl_diff) > 0) {
-           stop(paste('Invalid FCL codes:', paste(fcl_diff, collapse = ', ')))
-         }
+   ##       if (length(fcl_diff) > 0) {
+   ##         stop(paste('Invalid FCL codes:', paste(fcl_diff, collapse = ', ')))
+   ##       }
 
-         # Check that years are in a valid range
+   ##       # Check that years are in a valid range
 
-         if (min(add_map$year) < 2000) {
-           stop('The minimum year should not be lower than 2000.')
-         }
+   ##       if (min(add_map$year) < 2000) {
+   ##         stop('The minimum year should not be lower than 2000.')
+   ##       }
 
-         if (max(add_map$year) > as.numeric(format(Sys.Date(), '%Y'))) {
-           stop('The maximum year should not be greater than the current year.')
-         }
+   ##       if (max(add_map$year) > as.numeric(format(Sys.Date(), '%Y'))) {
+   ##         stop('The maximum year should not be greater than the current year.')
+   ##       }
 
-         # Check that there are no duplicate codes
+   ##       # Check that there are no duplicate codes
 
-         tmp <- add_map %>%
-           count(reporter_fao, year, flow, hs) %>%
-           filter(n > 1)
+   ##       tmp <- add_map %>%
+   ##         count(reporter_fao, year, flow, hs) %>%
+   ##         filter(n > 1)
 
-         if (nrow(tmp) > 0) {
-           stop('There are duplicate HS codes by reporter/year/flow.')
-         }
-
-
-
-         #hsfclmap3 <- tbl_df(ReadDatatable("hsfclmap3"))
-
-         tmp_file <- paste0(tempfile(), '.Rdata')
-         writeBin(httr::GET(hsfclmap3_file)$content, tmp_file)
-         load(tmp_file)
-
-
-         if (nrow(hsfclmap3) == 0) {
-           stop('A problem occurred when fetching the map table. Please, try again.')
-         }
+   ##       if (nrow(tmp) > 0) {
+   ##         stop('There are duplicate HS codes by reporter/year/flow.')
+   ##       }
 
 
 
-         # Raise warning if countries were NOT in mapping.
+   ##       #hsfclmap3 <- tbl_df(ReadDatatable("hsfclmap3"))
 
-         if (length(setdiff(unique(add_map$reporter_fao), hsfclmap3$area)) > 0) {
-           warning('Some countries were not in the mapping.')
-         }
-
-         tmp_file <- paste0(tempfile(), '.xls')
-         writeBin(httr::GET(hs6standard_file)$content, tmp_file)
-         hs6standard <- read_excel(tmp_file, sheet = 'Standard_HS12')
-
-         hs6standard_uniq <-
-           hs6standard %>%
-           group_by(HS2012Code) %>%
-           mutate(n = n()) %>%
-           ungroup() %>%
-           filter(n == 1) %>%
-           mutate(
-             hs6details = 'Standard_HS12',
-             hs6description = paste('FaoStatName', FaoStatName, sep = ': ')
-           ) %>%
-           select(HS2012Code, FaoStatCode, hs6details, hs6description)
+   ##       tmp_file <- paste0(tempfile(), '.Rdata')
+   ##       writeBin(httr::GET(hsfclmap3_file)$content, tmp_file)
+   ##       load(tmp_file)
 
 
-         adapt_map_sws_format <- function(data) {
-           data %>%
-             mutate(
-               startyear = year,
-               endyear = 2050L,
-               fromcode = hs,
-               tocode = hs,
-               recordnumb = NA_integer_
-             ) %>%
-             select(
-               area = reporter_fao,
-               flow,
-               fromcode,
-               tocode,
-               fcl,
-               startyear,
-               endyear,
-               recordnumb,
-               details,
-               tl_description = `TL description (if available)`
-             )
-         }
+   ##       if (nrow(hsfclmap3) == 0) {
+   ##         stop('A problem occurred when fetching the map table. Please, try again.')
+   ##       }
 
-         manual_updated <-
-           add_map %>%
-           filter(!is.na(fcl))
 
-         auto_updated <-
-           add_map %>%
-           filter(is.na(fcl), is.na(details), is.na(`TL description (if available)`)) %>%
-           mutate(hs6 = stringr::str_sub(hs, 1, 6)) %>%
-           left_join(
-             hs6standard_uniq,
-             by = c('hs6' = 'HS2012Code')
-           ) %>%
-           filter(!is.na(FaoStatCode)) %>%
-           mutate(fcl = FaoStatCode, details = hs6details, `TL description (if available)` = hs6description) %>%
-           select(-hs6, -FaoStatCode, -hs6details, -hs6description)
 
-         mapped <- bind_rows(manual_updated, auto_updated)
+   ##       # Raise warning if countries were NOT in mapping.
 
-         unmapped <- anti_join(add_map, mapped, by = c('year', 'reporter_fao', 'flow', 'hs'))
+   ##       if (length(setdiff(unique(add_map$reporter_fao), hsfclmap3$area)) > 0) {
+   ##         warning('Some countries were not in the mapping.')
+   ##       }
 
-         mapped <- adapt_map_sws_format(mapped)
+   ##       tmp_file <- paste0(tempfile(), '.xls')
+   ##       writeBin(httr::GET(hs6standard_file)$content, tmp_file)
+   ##       hs6standard <- read_excel(tmp_file, sheet = 'Standard_HS12')
 
-         max_record <- max(hsfclmap3$recordnumb)
+   ##       hs6standard_uniq <-
+   ##         hs6standard %>%
+   ##         group_by(HS2012Code) %>%
+   ##         mutate(n = n()) %>%
+   ##         ungroup() %>%
+   ##         filter(n == 1) %>%
+   ##         mutate(
+   ##           hs6details = 'Standard_HS12',
+   ##           hs6description = paste('FaoStatName', FaoStatName, sep = ': ')
+   ##         ) %>%
+   ##         select(HS2012Code, FaoStatCode, hs6details, hs6description)
 
-         mapped$recordnumb <- max_record:(max_record+nrow(mapped)-1)
 
-         values$mapped_links <- mapped
+   ##       adapt_map_sws_format <- function(data) {
+   ##         data %>%
+   ##           mutate(
+   ##             startyear = year,
+   ##             endyear = 2050L,
+   ##             fromcode = hs,
+   ##             tocode = hs,
+   ##             recordnumb = NA_integer_
+   ##           ) %>%
+   ##           select(
+   ##             area = reporter_fao,
+   ##             flow,
+   ##             fromcode,
+   ##             tocode,
+   ##             fcl,
+   ##             startyear,
+   ##             endyear,
+   ##             recordnumb,
+   ##             details,
+   ##             tl_description = `TL description (if available)`
+   ##           )
+   ##       }
 
-         values$unmapped_links <- unmapped
+   ##       manual_updated <-
+   ##         add_map %>%
+   ##         filter(!is.na(fcl))
 
-         mapped %>%
-           DT::datatable()
-     }
-   })
+   ##       auto_updated <-
+   ##         add_map %>%
+   ##         filter(is.na(fcl), is.na(details), is.na(`TL description (if available)`)) %>%
+   ##         mutate(hs6 = stringr::str_sub(hs, 1, 6)) %>%
+   ##         left_join(
+   ##           hs6standard_uniq,
+   ##           by = c('hs6' = 'HS2012Code')
+   ##         ) %>%
+   ##         filter(!is.na(FaoStatCode)) %>%
+   ##         mutate(fcl = FaoStatCode, details = hs6details, `TL description (if available)` = hs6description) %>%
+   ##         select(-hs6, -FaoStatCode, -hs6details, -hs6description)
 
-  output$down_mapped <- downloadHandler(
-    filename = function() {
-      paste0('mapped_hs-fcl_', format(Sys.time(), "%Y-%m-%d"), '.csv')
-    },
-    content = function(file) {
-      write.csv(values$mapped_links, file, row.names = FALSE)
-    }
-  )
+   ##       mapped <- bind_rows(manual_updated, auto_updated)
 
-  output$down_unmapped <- downloadHandler(
-    filename = function() {
-      paste0('unmapped_hs-fcl_', format(Sys.time(), "%Y-%m-%d"), '.csv')
-    },
-    content = function(file) {
-      write.csv(values$unmapped_links, file, row.names = FALSE)
-    }
-  )
+   ##       unmapped <- anti_join(add_map, mapped, by = c('year', 'reporter_fao', 'flow', 'hs'))
+
+   ##       mapped <- adapt_map_sws_format(mapped)
+
+   ##       max_record <- max(hsfclmap3$recordnumb)
+
+   ##       mapped$recordnumb <- max_record:(max_record+nrow(mapped)-1)
+
+   ##       values$mapped_links <- mapped
+
+   ##       values$unmapped_links <- unmapped
+
+   ##       mapped %>%
+   ##         DT::datatable()
+   ##   }
+   ## })
+
+  ## output$down_mapped <- downloadHandler(
+  ##   filename = function() {
+  ##     paste0('mapped_hs-fcl_', format(Sys.time(), "%Y-%m-%d"), '.csv')
+  ##   },
+  ##   content = function(file) {
+  ##     write.csv(values$mapped_links, file, row.names = FALSE)
+  ##   }
+  ## )
+
+  ## output$down_unmapped <- downloadHandler(
+  ##   filename = function() {
+  ##     paste0('unmapped_hs-fcl_', format(Sys.time(), "%Y-%m-%d"), '.csv')
+  ##   },
+  ##   content = function(file) {
+  ##     write.csv(values$unmapped_links, file, row.names = FALSE)
+  ##   }
+  ## )
 
    output$xstats <- DT::renderDataTable({
      input$xgo
