@@ -576,7 +576,7 @@ server <- function(input, output, session) {
     if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
       selectInput("year2correct",
         "Choose a year to correct:",
-        years)
+        rev(years))
     } else {
       NULL
     }
