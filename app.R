@@ -129,7 +129,6 @@ valid_supervisors <- c(
 
 valid_analysts <- c(
   valid_supervisors,
-  'user.name',
   'marcella.canero',
   'rachele.brivio',
   'tomasz.filipczuk',
@@ -145,7 +144,8 @@ valid_analysts <- c(
   'achim.markmiller',
   'gianluca.fiorentino',
   'edoardo.varese',
-  'daniela.difilippo'
+  'daniela.difilippo',
+  'alberto.munisso'
 )
 
 formatNum <- function(x) {
