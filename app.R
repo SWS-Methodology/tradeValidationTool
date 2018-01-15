@@ -2512,7 +2512,7 @@ types_correction <- c(
          ggplot(aes(x = timePointYears, y = n)) +
            geom_bar(stat = 'identity') +
            #scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
-           labs(title = 'Availability of data by year (reporter and commodity specific)')
+           labs(title = 'Number of partners by year (reporter and commodity specific)')
      })
    })
 
