@@ -36,6 +36,7 @@ hs6standard_file       <- paste0(files_location, 'HS2012-6%20digits%20Standard.x
 hsfclmap3_file         <- paste0(files_location, 'hsfclmap3.RData')
 help_file              <- paste0(files_location, 'help.Rmd')
 element_units_file     <- paste0(files_location, 'fao_item_units.csv')
+users_file             <- paste0(files_location, 'users.txt')
 
 if (app_mode == 'production') {
   # XXX the dir should be in config file
@@ -52,6 +53,8 @@ page_flows <- 'http://hqlprsws1.hq.un.fao.org:3838/flows/'
 
 fcl_codes <- read_csv(fcl_2_cpc_file)$fcl
 element_units <- read_csv(element_units_file)
+
+users <- read.table(users_file, header = TRUE, stringsAsFactors = FALSE)
 
 db <- readRDS(file = db_file)
 
@@ -109,9 +112,6 @@ powers <- function(to.check, benchmark) {
 }
 
 
-
-
-
 reporters <- c("", sort(unique(db$reporter_name)))
 
 partners <- c("", sort(unique(db$partner_name)))
@@ -120,33 +120,9 @@ items <- c("", sort(unique(db$item_name)))
 
 years <- c("", rev(sort(unique(db$timePointYears))))
 
-valid_supervisors <- c(
-  'katherine.baldwin',
-  'carola.fabi',
-  'tayyib.salar',
-  'claudia.devita'
-)
+valid_supervisors <- users$name[users$supervisor]
 
-valid_analysts <- c(
-  valid_supervisors,
-  'marcella.canero',
-  'rachele.brivio',
-  'tomasz.filipczuk',
-  'christian.mongeau',
-  'sebastian.campbell',
-  'bruno.vidigal',
-  'kenneth.basham',
-  'carlo.delbello',
-  'irina.kovrova',
-  'cristina.valdivia',
-  'giulia.piva',
-  'alfia.bonomo',
-  'achim.markmiller',
-  'gianluca.fiorentino',
-  'edoardo.varese',
-  'daniela.difilippo',
-  'alberto.munisso'
-)
+valid_analysts <- users$name[users$analyst]
 
 formatNum <- function(x) {
   format(round(x, 3), drop0trailing = TRUE, big.mark = ',', scientific = FALSE)
