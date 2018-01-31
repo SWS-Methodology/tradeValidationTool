@@ -928,6 +928,7 @@ types_correction <- c(
     item                  = NA,
     flow                  = NA,
     choose_correction     = NA,
+    selected              = NA,
     year2correct          = NA
   )
 
@@ -1547,6 +1548,7 @@ types_correction <- c(
     observeEvent(input$full_out_table_rows_selected, {
                      xxx <- values$mydb %>% filter(out == 1L, !grepl('T', flag_value))
                      idx <- input$full_out_table_rows_selected
+                     values$selected <- input$full_out_table_rows_selected
                      values$reporter = xxx$reporter_name[idx]
                      values$partner  = xxx$partner_name[idx]
                      values$item     = xxx$item_name[idx]
@@ -1584,7 +1586,28 @@ types_correction <- c(
             'timePointYears' = 'year'
             )
         ) %>%
+        mutate(
+          url = paste0(
+            '<a class = "link-to-plots" href="',
+            #DT::JS("document.querySelectorAll('[data-value]')[1].getAttribute('href')"),
+            '?_inputs_&reporter=%22',
+            reporter_name,
+            '%22&partner=%22',
+            partner_name,
+            '%22&flow=%22',
+            flow,
+            '%22&item=%22',
+            stringr::str_replace_all(item_name, '%', '%25'),
+            '%22&go=%221%22&go_db=%221%22&reporter_start=%22',
+            input$reporter_start,
+            '%22&item_start=%22',
+            input$item_start, '%22"',
+            tab_target,
+            '>link</a>'
+          )
+        ) %>%
         select(
+          url,
           reporter_name,
           partner_name,
           item_name,
@@ -1857,6 +1880,9 @@ types_correction <- c(
       '<br>',
       'values$xxx =',
       values$xxx,
+      '<br>',
+      'values$selected =',
+      values$selected,
       '<br>',
       'input$a_state =',
       str(input$full_out_table_state),
