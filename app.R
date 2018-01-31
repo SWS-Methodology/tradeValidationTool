@@ -217,14 +217,8 @@ ui <- function(request) {
             actionButton("go_db", "Select DB")
           ),
           checkboxInput("use_corrected_data", "Use corrected data?", TRUE),
-          conditionalPanel(
-            condition = 'input.go_db > 0',
-            selectInput("reporter", "Choose a reporter:", reporters)
-          ),
-          conditionalPanel(
-            condition = 'input.go_db > 0',
-            selectInput("partner", "Choose a partner:", partners)
-          ),
+          htmlOutput('reporter_ui'),
+          htmlOutput('partner_ui'),
           #uiOutput("partner"),
           conditionalPanel(
             condition = 'input.go_db > 0',
@@ -602,6 +596,22 @@ server <- function(input, output, session) {
     }
   })
 
+  output$reporter_ui <- renderUI({
+      if (input$go_db == 0) {
+        NULL
+      } else {
+        selectInput("reporter", "Choose a reporter:", values$list_reporters)
+      }
+  })
+
+  output$partner_ui <- renderUI({
+      if (input$go_db == 0) {
+        NULL
+      } else {
+        selectInput("partner", "Choose a partner:", values$list_partners)
+      }
+  })
+
   output$show_username <- renderText({
       if (length(input$cookies$username) == 0) {
         paste('No user name')
@@ -929,6 +939,9 @@ types_correction <- c(
     flow                  = NA,
     choose_correction     = NA,
     selected              = NA,
+    list_reporters        = reporters,
+    list_partners         = partners,
+    list_items            = items,
     year2correct          = NA
   )
 
@@ -1553,6 +1566,9 @@ types_correction <- c(
                      values$partner  = xxx$partner_name[idx]
                      values$item     = xxx$item_name[idx]
                      values$flow     = xxx$flow[idx]
+                     values$list_reporters = c(values$reporter, sort(unique(values$mydb$reporter_name)))
+                     values$list_partners = c(values$partner, sort(unique(values$mydb$partners_name)))
+                     values$list_items = c(values$item, sort(unique(values$mydb$item_name)))
                        })
 
   # http://stackoverflow.com/questions/29803310/r-shiny-build-links-between-tabs-with-dt-package
