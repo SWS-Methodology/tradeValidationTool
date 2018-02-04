@@ -202,15 +202,11 @@ ui <- function(request) {
           uiOutput("handle_cookies"),
           conditionalPanel(
             condition = 'input.go_db === 0',
-            tags$p('You can select "All reporters" in order to load the whole dataset, or select one or more reporters to load a subset. The same with items.')
+            selectInput("reporter_start", "Choose a reporter:", c(reporters), multiple = TRUE)
           ),
           conditionalPanel(
             condition = 'input.go_db === 0',
-            selectInput("reporter_start", "Choose a reporter:", c('All reporters', reporters[-1]), multiple = TRUE)
-          ),
-          conditionalPanel(
-            condition = 'input.go_db === 0',
-            selectInput("item_start", "Choose an item:", c('All items', items[-1]), multiple = TRUE, selected = 'All items')
+            selectInput("item_start", "Choose an item:", c('All items', items), multiple = TRUE, selected = 'All items')
           ),
           conditionalPanel(
             condition = 'input.go_db === 0',
@@ -361,10 +357,6 @@ ui <- function(request) {
       )
     ),
    tabPanel('Datatable',
-     conditionalPanel(
-       condition = 'input.reporter_start.match(/All reporters/) & input.item_start.match(/All items/)',
-       HTML('<p><strong>NOTE: if you selected <q>All reporters</q> and <q>All items</q>, this table will need a while to load.</strong></p>')
-     ),
      fluidRow(
        column(6,
          selectInput('outlier_method',
@@ -1150,17 +1142,9 @@ types_correction <- c(
         # /apply existing corrections
 
         
-        if ('All reporters' %in% input$reporter_start) {
-          #values$mydb <- values$db
-          values$mydb <- db
-        } else {
-          #values$mydb <- filter(values$db, reporter_name %in% input$reporter_start)
-          values$mydb <- filter(db, reporter_name %in% input$reporter_start)
-        }
+        values$mydb <- filter(db, reporter_name %in% input$reporter_start)
 
-        if ('All items' %in% input$item_start) {
-          values$mydb <- values$mydb
-        } else {
+        if (!('All items' %in% input$item_start)) {
           values$mydb <- filter(values$mydb, item_name %in% input$item_start)
         }
 
