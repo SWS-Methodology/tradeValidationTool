@@ -324,6 +324,10 @@ ui <- function(request) {
           #plotlyOutput("plotUV"),
           conditionalPanel(
             condition = 'input.go > 0',
+            uiOutput("selection_title")
+          ),
+          conditionalPanel(
+            condition = 'input.go > 0',
             uiOutput("units_measurement")
           ),
           plotOutput("plotUV", hover = "plotUV_hover"),
@@ -1478,7 +1482,15 @@ types_correction <- c(
 
     if (length(unqty) != 0) {
       unqty <- ifelse(unqty == 't', 'tonnes', unqty)
-      HTML(paste('<p><strong>Values are expressed in 1,000 US dollars, quantities in', unqty, 'and unit values in 1,000 US dollars per tonne.</strong></p>'))
+      HTML(paste('<p>Values are expressed in 1,000 US dollars, quantities in', unqty, 'and unit values in 1,000 US dollars per tonne.</p>'))
+    }
+  })
+
+  output$selection_title <- renderUI({
+    if (is.na(values$reporter)) {
+      NULL
+    } else {
+      HTML(paste0('<p style="font-size: 1.2em;"><strong>Current selection: reporter = ', values$reporter, ', partner = ', values$partner, ', item = ', values$item, ', flow = ', ifelse(values$flow == '1', 'import', 'export'), '</strong></p>'))
     }
   })
 
