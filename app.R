@@ -1474,14 +1474,10 @@ types_correction <- c(
 
   output$units_measurement <- renderUI({
     unqty <- unique(datasetInput()$data$qty_unit)
-    if (identical(unqty, 't')) {
-      unqty <- 'tonnes'
-    } else if (is.na(unqty)) {
-      unqty <- 'unspecified (value only?)'
-    }
+    unqty <- unqty[!is.na(unqty)]
 
-    # FIXME this actually doen't work: used a conditionalPanel
     if (length(unqty) != 0) {
+      unqty <- ifelse(unqty == 't', 'tonnes', unqty)
       HTML(paste('<p><strong>Values are expressed in 1,000 US dollars, quantities in', unqty, 'and unit values in 1,000 US dollars per tonne.</strong></p>'))
     }
   })
@@ -1639,7 +1635,7 @@ types_correction <- c(
           ma = round(ma, 3),
           flow = ifelse(flow == 1, 'import', 'export'),
           corrected = if_else(corrected, corrected, FALSE, FALSE),
-          qty_unit = if_else(qty_unit == 't', 'tonnes', qty_unit, '(value only?)')
+          qty_unit = ifelse(qty_unit == 't', 'tonnes', qty_unit)
         ) %>%
         DT::datatable(
           callback =
@@ -2449,7 +2445,7 @@ types_correction <- c(
            median           = formatNum(median),
            median_world     = formatNum(median_world),
            movav_unit_value = formatNum(movav_unit_value),
-           qty_unit         = if_else(qty_unit == 't', 'tonnes', qty_unit, '(value only?)')
+           qty_unit         = ifelse(qty_unit == 't', 'tonnes', qty_unit)
          ) %>%
          rename(`value (1,000$)` = value)
 
@@ -2486,7 +2482,7 @@ types_correction <- c(
              value      = formatNum(value),
              weight     = formatNum(weight),
              unit_value = formatNum(unit_value),
-             qty_unit   = if_else(qty_unit == 't', 'tonnes', qty_unit, '(value only?)')
+             qty_unit   = ifelse(qty_unit == 't', 'tonnes', qty_unit)
            ) %>%
            rename(`value (1,000$)` = value)
      })
