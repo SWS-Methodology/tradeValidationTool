@@ -909,13 +909,13 @@ server <- function(input, output, session) {
   ##   my_iframe
   ## })
 
-types_correction <- c(
-  'None',
-  'Measurement factor',
-  'Mirror flow',
-  'Outlier correction',
-  'Expert knowledge'
-)
+  types_correction <- c(
+    'None',
+    'Measurement factor',
+    'Mirror flow',
+    'Outlier correction',
+    'Expert knowledge'
+  )
 
 
   # https://groups.google.com/d/msg/shiny-discuss/JMqhFhC7QaQ/MzhpACi08FYJ
