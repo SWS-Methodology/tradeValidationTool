@@ -500,7 +500,7 @@ server <- function(input, output, session) {
   })
 
   output$corrections_separator <- renderUI({
-    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       strong('Corrections')
     } else {
       NULL
@@ -523,7 +523,7 @@ server <- function(input, output, session) {
   })
 
   output$variable2correct <- renderUI({
-    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       selectInput("variable2correct",
         "Variable to correct:",
         c('Quantity', 'Value'))
@@ -533,7 +533,7 @@ server <- function(input, output, session) {
   })
 
   output$year2correct <- renderUI({
-    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       selectInput("year2correct",
         "Choose a year to correct:",
         years)
@@ -553,7 +553,7 @@ server <- function(input, output, session) {
   })
 
   output$go10 <- renderUI({
-    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       actionButton("go10", "Apply correction")
     } else {
       NULL
@@ -561,7 +561,7 @@ server <- function(input, output, session) {
   })
 
   output$goremove <- renderUI({
-    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       actionButton("goremove", "Hide old series")
     } else {
       NULL
@@ -569,7 +569,7 @@ server <- function(input, output, session) {
   })
 
   output$confirm_correction <- renderUI({
-    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       actionButton("confirm_correction", "Confirm correction")
     } else {
       NULL
@@ -577,7 +577,7 @@ server <- function(input, output, session) {
   })
 
   output$choose_correction_ui <- renderUI({
-    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       selectInput("choose_correction",
         "Choose a type of correction:",
         values$types_correction)
@@ -590,7 +590,7 @@ server <- function(input, output, session) {
       if (input$go_db == 0) {
         NULL
       } else {
-        selectInput("reporter", "Choose a reporter:", reporters, selected = values$reporter)
+        HTML(paste0('<p>Reporter: <strong>', values$reporter, '</strong>'))
       }
   })
 
@@ -950,7 +950,7 @@ types_correction <- c(
 
 
   observeEvent(input$partner, {values$partner <- input$partner})
-  observeEvent(input$reporter, {values$reporter <- input$reporter})
+  observeEvent(input$reporter_start, {values$reporter <- input$reporter_start})
   observeEvent(input$item, {values$item <- input$item})
   observeEvent(input$flow, {values$flow <- input$flow})
   observeEvent(input$choose_correction, {values$choose_correction <- input$choose_correction})
@@ -1835,9 +1835,6 @@ types_correction <- c(
       '<br>',
       'input$gousername =',
       input$gousername,
-      '<br>',
-      'input$reporter =',
-      input$reporter,
       '<br>',
       'input$partner =',
       input$partner,
