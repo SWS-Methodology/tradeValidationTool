@@ -220,14 +220,8 @@ ui <- function(request) {
           htmlOutput('reporter_ui'),
           htmlOutput('partner_ui'),
           #uiOutput("partner"),
-          conditionalPanel(
-            condition = 'input.go_db > 0',
-            selectInput("flow", "Choose a flow:", c("", import = 1, export = 2))
-          ),
-          conditionalPanel(
-            condition = 'input.go_db > 0',
-            selectInput("item", "Choose an item:", items)
-          ),
+          htmlOutput('flow_ui'),
+          htmlOutput('item_ui'),
           #uiOutput("item"),
           conditionalPanel(
             condition = 'input.go_db > 0',
@@ -510,7 +504,7 @@ server <- function(input, output, session) {
   })
 
   output$corrections_separator <- renderUI({
-    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       strong('Corrections')
     } else {
       NULL
@@ -533,7 +527,7 @@ server <- function(input, output, session) {
   })
 
   output$variable2correct <- renderUI({
-    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       selectInput("variable2correct",
         "Variable to correct:",
         c('Quantity', 'Value'))
@@ -543,7 +537,7 @@ server <- function(input, output, session) {
   })
 
   output$year2correct <- renderUI({
-    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       selectInput("year2correct",
         "Choose a year to correct:",
         years)
@@ -563,7 +557,7 @@ server <- function(input, output, session) {
   })
 
   output$go10 <- renderUI({
-    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       actionButton("go10", "Apply correction")
     } else {
       NULL
@@ -571,7 +565,7 @@ server <- function(input, output, session) {
   })
 
   output$goremove <- renderUI({
-    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       actionButton("goremove", "Hide old series")
     } else {
       NULL
@@ -579,7 +573,7 @@ server <- function(input, output, session) {
   })
 
   output$confirm_correction <- renderUI({
-    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       actionButton("confirm_correction", "Confirm correction")
     } else {
       NULL
@@ -587,7 +581,7 @@ server <- function(input, output, session) {
   })
 
   output$choose_correction_ui <- renderUI({
-    if (values$reporter != "" && values$partner != "" && values$item != "" && values$flow != "") {
+    if (!(is.na(values$reporter) && is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
       selectInput("choose_correction",
         "Choose a type of correction:",
         values$types_correction)
@@ -600,7 +594,7 @@ server <- function(input, output, session) {
       if (input$go_db == 0) {
         NULL
       } else {
-        selectInput("reporter", "Choose a reporter:", values$list_reporters)
+        selectInput("reporter", "Choose a reporter:", reporters, selected = values$reporter)
       }
   })
 
@@ -608,7 +602,23 @@ server <- function(input, output, session) {
       if (input$go_db == 0) {
         NULL
       } else {
-        selectInput("partner", "Choose a partner:", values$list_partners)
+        selectInput("partner", "Choose a partner:", partners, selected = values$partner)
+      }
+  })
+
+  output$item_ui <- renderUI({
+      if (input$go_db == 0) {
+        NULL
+      } else {
+        selectInput("item", "Choose an item:", items, selected = values$item)
+      }
+  })
+
+  output$flow_ui <- renderUI({
+      if (input$go_db == 0) {
+        NULL
+      } else {
+        selectInput("flow", "Choose a flow:", c(import = 1, export = 2), selected = values$flow)
       }
   })
 
@@ -939,9 +949,6 @@ types_correction <- c(
     flow                  = NA,
     choose_correction     = NA,
     selected              = NA,
-    list_reporters        = reporters,
-    list_partners         = partners,
-    list_items            = items,
     year2correct          = NA
   )
 
@@ -1562,13 +1569,10 @@ types_correction <- c(
                      xxx <- values$mydb %>% filter(out == 1L, !grepl('T', flag_value))
                      idx <- input$full_out_table_rows_selected
                      values$selected <- input$full_out_table_rows_selected
-                     values$reporter = xxx$reporter_name[idx]
-                     values$partner  = xxx$partner_name[idx]
-                     values$item     = xxx$item_name[idx]
-                     values$flow     = xxx$flow[idx]
-                     values$list_reporters = c(values$reporter, sort(unique(values$mydb$reporter_name)))
-                     values$list_partners = c(values$partner, sort(unique(values$mydb$partners_name)))
-                     values$list_items = c(values$item, sort(unique(values$mydb$item_name)))
+                     values$reporter <- xxx$reporter_name[idx]
+                     values$partner  <- xxx$partner_name[idx]
+                     values$item     <- xxx$item_name[idx]
+                     values$flow     <- xxx$flow[idx]
                        })
 
   # http://stackoverflow.com/questions/29803310/r-shiny-build-links-between-tabs-with-dt-package
@@ -1863,6 +1867,27 @@ types_correction <- c(
       '<br>',
       'input$reporter =',
       input$reporter,
+      '<br>',
+      'input$partner =',
+      input$partner,
+      '<br>',
+      'input$item =',
+      input$item,
+      '<br>',
+      'input$flow =',
+      input$flow,
+      '<br>',
+      'values$reporter =',
+      values$reporter,
+      '<br>',
+      'values$partner =',
+      values$partner,
+      '<br>',
+      'values$item =',
+      values$item,
+      '<br>',
+      'values$flow =',
+      values$flow,
       '<br>',
       'input$reporter_start =',
       input$reporter_start,
