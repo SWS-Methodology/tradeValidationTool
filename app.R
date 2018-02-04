@@ -202,7 +202,7 @@ ui <- function(request) {
           uiOutput("handle_cookies"),
           conditionalPanel(
             condition = 'input.go_db === 0',
-            selectInput("reporter_start", "Choose a reporter:", c(reporters), multiple = TRUE)
+            selectInput("reporter_start", "Choose a reporter:", c(reporters), multiple = FALSE)
           ),
           conditionalPanel(
             condition = 'input.go_db === 0',
