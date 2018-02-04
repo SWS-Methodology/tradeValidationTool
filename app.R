@@ -40,10 +40,10 @@ users_file             <- paste0(files_location, 'users.txt')
 
 if (app_mode == 'production') {
   # XXX the dir should be in config file
-  corrections_file <- paste0('/work/SWS_R_Share/trade/validation_tool_files/', 'corrections_table.rds')
+  corrections_dir <- paste0('/work/SWS_R_Share/trade/validation_tool_files')
   db_file          <- paste0('/work/SWS_R_Share/trade/validation_tool_files/', 'db.rds')
 } else if (app_mode == 'test') {
-  corrections_file <- file.path(persistent_files, 'test', 'corrections_table.rds')
+  corrections_dir <- file.path(persistent_files, 'test')
   db_file          <- file.path(persistent_files, 'test', 'db.rds')
 } else {
   stop('The "mode" should be either "test" or "production"')
@@ -476,9 +476,6 @@ ui <- function(request) {
 server <- function(input, output, session) {
 
 
-  corrections_table <- readRDS(corrections_file)
-  saveRDS(corrections_table, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M%S'), '\\1'), corrections_file))
-
   output$handle_cookies <- renderUI({
     # javascript code to send data to shiny server
     tags$script(paste0('
@@ -757,7 +754,7 @@ server <- function(input, output, session) {
 
     # Use corrections
     if (input$use_corrected_data) {
-      sub_corrections_table <- corrections_table %>%
+      sub_corrections_table <- values$corrections %>%
         filter(
           reporter %in% unique(res$geographicAreaM49Reporter),
           partner  %in% unique(res$geographicAreaM49Partner),
@@ -922,7 +919,8 @@ server <- function(input, output, session) {
   values <- reactiveValues(
     types_correction      = types_correction,
     shouldShow            = TRUE,
-    corrections           = corrections_table,
+    corrections_file      = NA,
+    corrections           = NA,
     data_correct          = NA,
     analyst_note          = NA,
     correct_note          = NA,
@@ -948,9 +946,29 @@ server <- function(input, output, session) {
     year2correct          = NA
   )
 
+  observeEvent(input$reporter_start, {
+
+               values$reporter <- input$reporter_start
+
+               if (input$reporter_start != "") {
+                 rep_code <- (filter(db, reporter_name == input$reporter_start) %>% distinct(geographicAreaM49Reporter))[[1]]
+
+                 values$corrections_file <- file.path(corrections_dir, rep_code, 'corrections_table.rds')
+
+                 if (!file.exists(values$corrections_file)) {
+                   dir.create(file.path(corrections_dir, rep_code))
+                   initial <- readRDS(file.path(corrections_dir, 'corrections_table.rds')) %>% slice(0)
+                   saveRDS(initial, file = values$corrections_file)
+                 }
+
+                 values$corrections <- readRDS(values$corrections_file)
+
+                 saveRDS(values$corrections, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M%S'), '\\1'), values$corrections_file))
+               }
+
+  })
 
   observeEvent(input$partner, {values$partner <- input$partner})
-  observeEvent(input$reporter_start, {values$reporter <- input$reporter_start})
   observeEvent(input$item, {values$item <- input$item})
   observeEvent(input$flow, {values$flow <- input$flow})
   observeEvent(input$choose_correction, {values$choose_correction <- input$choose_correction})
@@ -1006,7 +1024,7 @@ server <- function(input, output, session) {
         #  if (mirror) {
         #    res <- right_join(
         #    db,
-        #    corrections_table %>%
+        #    values$corrections %>%
         #      select(reporter, partner, year, item, flow, data_type, correction_input) %>%
         #      mutate(year = as.character(year), flow = ifelse(flow == 1L, 2L, 1L)),
         #    by = c(
@@ -1029,7 +1047,7 @@ server <- function(input, output, session) {
         #  } else {
         #    res <- right_join(
         #    db,
-        #    corrections_table %>%
+        #    values$corrections %>%
         #      select(reporter, partner, year, item, flow, data_type, correction_input) %>%
         #      mutate(year = as.character(year)),
         #    by = c(
@@ -1073,7 +1091,7 @@ server <- function(input, output, session) {
 
         ## METHOD 2
         #if (input$use_corrected_data) {
-        #  sub_corrections_table_rep <- corrections_table %>%
+        #  sub_corrections_table_rep <- values$corrections %>%
         #    select(reporter, partner, year, item, flow, data_type, correction_input) %>%
         #    complete(nesting(reporter, partner, year, item, flow), data_type = c('qty', 'value')) %>%
         #    #filter(
@@ -1248,12 +1266,12 @@ server <- function(input, output, session) {
 
           values$corrections <- combine_corrections(
             working = values$corrections,
-            file    = corrections_file,
+            file    = values$corrections_file,
             new     = corrections_new_row
           )
 
           ### XXX SAVECORR
-          saveRDS(values$corrections, corrections_file)
+          saveRDS(values$corrections, values$corrections_file)
 
           output$corrections_message <- renderText(
             paste0(
@@ -1395,12 +1413,12 @@ server <- function(input, output, session) {
 
         values$corrections <- combine_corrections(
           working = values$corrections,
-          file    = corrections_file,
+          file    = values$corrections_file,
           new     = corrections_new_row
         )
 
         ### XXX SAVECORR
-        saveRDS(values$corrections, corrections_file)
+        saveRDS(values$corrections, values$corrections_file)
 
         output$corrections_message <- renderText(
           paste0(
@@ -1587,7 +1605,7 @@ server <- function(input, output, session) {
         # XXX Note that this join will take a while if done on the whole table
         # (especially when the outlier option is set to "All data")
         left_join(
-          corrections_table %>%
+          values$corrections %>%
             select(reporter, partner, year, item, flow) %>%
             mutate(corrected = TRUE, year = as.character(year)),
           by = c(
@@ -1700,7 +1718,7 @@ server <- function(input, output, session) {
 
       values$corrections <- combine_corrections(
         working = values$corrections,
-        file    = corrections_file,
+        file    = values$corrections_file,
         remove  = to_remove
       )
 
@@ -1738,7 +1756,7 @@ server <- function(input, output, session) {
         )
     } else {
       writeBin(1, lock_name)
-      saveRDS(values$corrections, file = corrections_file)
+      saveRDS(values$corrections, file = values$corrections_file)
       unlink(lock_name)
     }
 
@@ -1971,12 +1989,12 @@ server <- function(input, output, session) {
 
   #        #values$corrections <- combine_corrections(
   #        #  working = values$corrections,
-  #        #  file    = corrections_file,
+  #        #  file    = values$corrections_file,
   #        #  new     = corrections_new_row
   #        #)
 
   #        #### XXX SAVECORR
-  #        #saveRDS(values$corrections, corrections_file)
+  #        #saveRDS(values$corrections, values$corrections_file)
 
   #        #output$corrections_message <- renderText(
   #        #  paste0(
@@ -2045,12 +2063,12 @@ server <- function(input, output, session) {
 
   #      values$corrections <- combine_corrections(
   #        working = values$corrections,
-  #        file    = corrections_file,
+  #        file    = values$corrections_file,
   #        new     = corrections_new_row
   #      )
 
   #      ### XXX SAVECORR
-  #      saveRDS(values$corrections, corrections_file)
+  #      saveRDS(values$corrections, values$corrections_file)
 
   #      output$corrections_message <- renderText(
   #        paste0(
