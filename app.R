@@ -1490,7 +1490,7 @@ types_correction <- c(
     if (is.na(values$reporter)) {
       NULL
     } else {
-      HTML(paste0('<p style="font-size: 1.2em;"><strong>Current selection: reporter = ', values$reporter, ', partner = ', values$partner, ', item = ', values$item, ', flow = ', ifelse(values$flow == '1', 'import', 'export'), '</strong></p>'))
+      HTML(paste0('<p style="font-size: 1.2em;"><strong>Current selection: reporter = <span id = "selected_reporter" style = "color: blue;">', values$reporter, '</span>, partner = <span id = "selected_partner" style = "color: blue;">', values$partner, '</span>, item = <span id = "selected_item" style = "color: blue;">', values$item, '</span>, flow = <span id = "selected_flow" style = "color: blue;">', ifelse(values$flow == '1', 'import', 'export'), '</span></strong></p>'))
     }
   })
 
@@ -1598,28 +1598,7 @@ types_correction <- c(
             'timePointYears' = 'year'
             )
         ) %>%
-        mutate(
-          url = paste0(
-            '<a class = "link-to-plots" href="',
-            #DT::JS("document.querySelectorAll('[data-value]')[1].getAttribute('href')"),
-            '?_inputs_&reporter=%22',
-            reporter_name,
-            '%22&partner=%22',
-            partner_name,
-            '%22&flow=%22',
-            flow,
-            '%22&item=%22',
-            stringr::str_replace_all(item_name, '%', '%25'),
-            '%22&go=%221%22&go_db=%221%22&reporter_start=%22',
-            input$reporter_start,
-            '%22&item_start=%22',
-            input$item_start, '%22"',
-            tab_target,
-            '>link</a>'
-          )
-        ) %>%
         select(
-          url,
           reporter_name,
           partner_name,
           item_name,
