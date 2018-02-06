@@ -389,10 +389,7 @@ ui <- function(request) {
      # XXX in theory this should be visible only when a first correction
      # has been confirmed (as above), but it is not doing that
      actionButton("sync_corrections_table", "Synchronise table"),
-     conditionalPanel(
-       condition = 'input.okCorrection > 0',
-       actionButton("delete_correction", "Delete selected correction")
-     ),
+     actionButton("delete_correction", "Delete selected correction"),
      DT::dataTableOutput("corrections_table")
    ),
    tabPanel("Outliers stats",
