@@ -392,6 +392,11 @@ ui <- function(request) {
      actionButton("delete_correction", "Delete selected correction"),
      DT::dataTableOutput("corrections_table")
    ),
+   tabPanel(
+     'Check',
+     actionButton("load_unapplied", "Check for unapplied corrections"),
+     DT::dataTableOutput("unapplied_corrections_table")
+   ),
    tabPanel("Outliers stats",
      sidebarLayout(
        sidebarPanel(
@@ -1681,6 +1686,31 @@ server <- function(input, output, session) {
       DT::datatable(data.frame(info = 'You cannot access this feature: please, indicate your user name and choose reporter/item.'))
     }
   })
+
+  output$unapplied_corrections_table <-
+    DT::renderDataTable({
+      if (values$valid_user && !is.na(values$reporter) && input$load_unapplied > 0) {
+        if (input$reporter_start == "") {
+          DT::datatable(data.frame(info = 'No reporter was selected.'))
+        } else {
+
+          files <- dir(file.path(corrections_dir, 'unapplied'), full.names = TRUE)
+
+          if (length(files) > 0) {
+
+            lapply(files, readRDS) %>%
+            do.call(rbind, .) %>%
+            DT::datatable()
+
+          } else {
+            DT::datatable(data.frame(info = 'There are no unapplied corrections.'))
+          }
+
+        }
+      } else {
+        NULL
+      }
+    })
 
   output$corrections_table <- DT::renderDataTable(
     #if ((input$go == 1 | input$gousername > 0) & values$valid_user) {
