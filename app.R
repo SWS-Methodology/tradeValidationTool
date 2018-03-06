@@ -1217,6 +1217,41 @@ server <- function(input, output, session) {
     if (input$multiplecorrections) {
       db_all_partners <- values$db %>% filter(reporter_name == values$reporter, flow == values$flow, item_name == values$item, timePointYears == input$year2correct)
 
+      # Check whether there are already saved corrections. If that's
+      # the case, remove the partner from the list of those that will
+      # get corrections, and add it to the visualised string. The following
+      # variable will be set to FALSE, but user will be notified by string.
+      values$dup_correction <- FALSE
+
+      partners_corrected <- ''
+
+      # zeros rows => no saved partners
+      already_saved <-
+        semi_join(
+          values$corrections %>% mutate(year = as.character(year)),
+          db_all_partners,
+          by = c('flow',
+                 'reporter' = 'geographicAreaM49Reporter',
+                 'item'     = 'measuredItemCPC',
+                 'year'     = 'timePointYears')
+        )
+
+      if (nrow(already_saved) > 0) {
+
+        partners_corrected <- paste(already_saved$partner, collapse = ', ')
+
+        db_all_partners <-
+          anti_join(
+            db_all_partners,
+            already_saved,
+            by = c('flow',
+                   'geographicAreaM49Reporter' = 'reporter',
+                   'geographicAreaM49Partner'  = 'partner',
+                   'measuredItemCPC'           = 'item',
+                   'timePointYears'            = 'year')
+          )
+      }
+
       all_partners <- unique(db_all_partners$geographicAreaM49Partner)
 
       progress <- Progress$new(session, min = 1, max = length(all_partners))
@@ -1226,10 +1261,6 @@ server <- function(input, output, session) {
 
       string_corrections <- ''
       for (partner_code in all_partners) {
-
-        # TODO As in the single-correction case, we should check
-        # whether corrections already exist
-        values$dup_correction <- FALSE
 
         db_single_partner <- db_all_partners %>% filter(geographicAreaM49Partner == partner_code)
 
@@ -1297,6 +1328,17 @@ server <- function(input, output, session) {
           Sys.sleep(2) # in order to (try to) prevent overwite issues
         }
       }
+
+      if (nchar(partners_corrected) > 0) {
+        string_corrections <-
+          paste0(
+            string_corrections,
+            '.\nCorrections were NOT saved for the following partners: ',
+            partners_corrected,
+            ' (they already had corrections).'
+          )
+      }
+
       values$xxx <- string_corrections
       output$corrections_message <-
         renderText(paste('Corrections were saved for the following partners:',
