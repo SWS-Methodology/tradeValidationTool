@@ -1,5 +1,5 @@
 ---
-title: '**Interactive tools for trade data validation**'
+title: '**Interactive tool for trade data validation**'
 author:
   Christian A. Mongeau Ospina\
 
@@ -12,32 +12,15 @@ output:
   html_document: default
 ---
 
-The interactive tool for trade data validation consists in two
-modules:
+The interactive tool for trade data validation deals with
+bilateral trade flows (i.e., at the "complete trade flow" level).
+With it, trade data can be scrutinised and eventually corrected.
 
-* [Bilateral trade flow](http://hqlprsws1.hq.un.fao.org:3838/outliers/)
-* [Module/FAOSTAT comparison, flows](http://hqlprsws1.hq.un.fao.org:3838/flows/)
-
-As the names suggest, the first one deals with bilateral trade
-flows (i.e., at the "complete trade flow" level), while the second
-deals with comparisons of module and FAOSTAT aggregated
-data (i.e., at the "total trade flow" level).
-
-By using the tools (singularly, or, possibly, in combination one
-with each other) trade data can be scrutinised and eventually
-corrected.
-
-In the next sections, the modules will be explained in detail.
-
-While indeed the bilateral and total trade tools for validation
-lives in two different pages, the latter can be accessed by the
-former in the "Module/FAOSTAT flows" component (technically, this
-is an *iframe* that opens the "flows" app inside the bilateral
-validation tool).
-
-**Note: given that the process for generating the whole elements
-of _Module/FAOSTAT comparison_ is very time-consuming, currently other
-validation strategies for total trade are in course of development.**
+**Note: A former version of the tool presented a dynamic
+visualisation of FAOSTAT/module total trade comparison, but
+they were very slow to generate. For this reason, a different
+approach is now used to check for outliers at the total trade
+level.**
 
 ## Bilateral trade flows
 
@@ -46,12 +29,12 @@ available at:
 
 <http://hqlprsws1.hq.un.fao.org:3838/outliers/>
 
-The first time the tool is accessed, the complete dataset with
+The first time the tool is accessed, the *complete* dataset with
 bilateral trade flows will be loaded. Given that it consists of
 more than 14 million of bilateral transactions, it will require
 some seconds to load (around 30 seconds). Once it is accessed by
-someone, the whole dataset remains in the server cache until there
-is at least one analyst using it.
+someone, the whole dataset remains in the server cache (thus it
+will load faster) until there is at least one analyst using it.
 
 When you load the app, it looks like the image below.
 
@@ -59,19 +42,26 @@ When you load the app, it looks like the image below.
 
 In order to access the functionalities of the tool, you will have
 to write your user name in the "User name" field, then select a
-reporter (or more reporters) and and item (or "All items", which
-is the default). When you do this, you can click on "Select DB" so
-that your choice is saved.
+reporter and item (or "All items", which is the default). The
+steps are shown in the next three figures.
 
-The app is composed by seven components:
+![Set user name][initial_username]
+
+![Set reporter][initial_reporter]
+
+![Set item][initial_item]
+
+Once you selected reporter and partner, you need to click on
+"Select DB" so that your choice is saved.
+
+The app is composed by six components:
 
 * **Plots**
 * **Datatable**
 * **Corrections**
+* **Check**
 * **Outliers stats**
 * **Other graphs**
-* **Mapping**
-* **Module/FAOSTAT flows**
 
 The next sub-sections explain the various components.
 
@@ -81,17 +71,11 @@ In this component you can plot graphs of the unit value, quantity
 and value for a combination of "reporter", "partner", "flow" (1 =
 imports, 2 = exports) and "item", which can be selected in the
 menu on the left column or, more likely, in the "Datatable" table
-where the outliers are shown (you'll have to click on "link";
+where the outliers are shown (you'll have to click on a row;
 details further in the text).
 
-When you click on the menu under "Choose a reporter:", a list of
-reporters appears and you can select one reporter.
-
-![Reporter selection][reporter_selection]
-
-
-The same for partners (notice that you can write the name of the
-country and those that match will remain visible).
+When you click on the menu under "Choose a partner:", a list of
+partners appears and you can select one partner.
 
 ![Partner selection][partner_selection]
 
@@ -101,7 +85,7 @@ A similar approach should be used for selection the item
 
 ![Item selection][item_selection]
 
-Once you define your selection, you can click on "Draw the plot"
+Once you define your selection, you can click on "Draw the plots"
 to see the plots (note that you can also choose a combination of
 reporter/partner/flow/item in the "Datatable" component; see
 below). An example of the results can be seen in the following
@@ -125,17 +109,20 @@ Outliers, defined by using the "fixed threshold" method (see the
 definition below in the "Datatable" paragraph), are shown with a
 black point.
 
-Below the first three graphs, there is an infobox that shows
-the number of countries with which the reporter has had at least
-one flow of that commodity in the whole period condidered (in the
-example it says: "Number of different partners on the whole
-sample:  43").  Just below this information, there is a graph
-showing the distribution of actual partners by specific years.
+The first three graphs are for the unit value, quantity and
+monetary values, respectively. Below these graphs there is a graph
+showing the aggregated (i.e., total) variables of the selected
+commodity for the reporter under analysis.
 
-There is also a graph showing the aggregated flow of the selected
-commodity for the repoter under analysis.
+The element contains an infobox that shows the number of countries
+with which the reporter has had at least one flow of that
+commodity in the whole period considered (in the example it says:
+"Number of different partners on the whole sample: 86"). Just
+below this information, there is a graph showing the distribution
+of actual partners by years.
 
-Finally, a snapshot of the data is shown at the end of the page.
+Finally, snapshots of the data (bilateral reporter and partner
+data, and total data) are shown at the end of the page.
 
 After you draw the plots, it is possible to download the underlying
 data by clicking the "Download" button.
@@ -143,7 +130,7 @@ data by clicking the "Download" button.
 ![Download data][download_selection]
 
 Moreover, in this screen you can do corrections to outlying
-observations.
+observations. This will be explained in the next section.
 
 Note: instead of selecting combinations of
 reporters/partners/items in order to search for outliers, it is
@@ -159,14 +146,15 @@ If you need to correct some anomalous (outlier) observation, you
 can do it in the "Plots" component.
 
 It is possible to correct either the value or the quantity. In
-both cases, the main value that gets corrected is the unit value
-to and, consequently, the variable you decided to correct by
-considering the other variable as already correct. Thus, if you decide
-to correct a quantity, you first should have a look at the unit value of
-that transaction, fix it and then the imputed quantity will be given by the
-ratio between the value and the corrected unit value; conversely, if you
-want to correct a value, you fix the unit value and the imputed value is
-obtained by multiplying the quantity by the corrected unit value.
+both cases, the target value that gets corrected is the unit value
+consequently, the variable you decided to correct will be adjusted
+by considering the other variable as already correct. Thus, if you
+decide to correct a quantity, you first should have a look at the
+unit value of that transaction, fix it and then the imputed
+quantity will be given by the ratio between the value and the
+corrected unit value; conversely, if you want to correct a value,
+you fix the unit value and the imputed value is obtained by
+multiplying the quantity by the corrected unit value.
 
 You can choose the year for which you want to do a correction
 ("Choose a year to correct:") and a type of correction ("Choose a
@@ -234,7 +222,7 @@ correction; How to correct unit\_value: &gt; Median partners). A
 black line will show the new value (the original value is still
 visible, in red).
 
-![Corrrection example][correction_example]
+![Correction example][correction_example]
 
 You can remove the old (or original) series by clicking the
 "Remove old series" button. If you want it back, click again on
@@ -243,8 +231,8 @@ the same button.
 Once you are confident with the correction, click "Confirm
 correction". This will open a confirmation menu, where you can
 confirm (OK), or go back (if you decide to go back, no correction
-will be stored . In the case you confirm, the correction will be
-saved in the correction table that can be visualised in the
+will be stored). In the case you confirm, the correction will be
+saved in the "corrections table" that can be visualised in the
 "Corrections" component (see below).
 
 ![Confirm correction][correction_success]
@@ -270,7 +258,7 @@ the "Plots" component). We propose four criteria:
   thresholds are defined as the 5th and 95th percentiles of the
   distribution of the ratio computed specifically for the item
   (there are different thresholds, e.g., for "maize (corn)",
-  "mushrooms and thruffles", etc.). In other words, for each
+  "mushrooms and truffles", etc.). In other words, for each
   commodity the distribution of the unit value and the three-year
   moving average is obtained and the thresholds are set as the
   5th and 95th percentile.
@@ -285,14 +273,14 @@ the "Plots" component). We propose four criteria:
   logarithm of the unit values of that specific item/flow
   combination with respect to all partners of the reporter.
 
-If, sor some reason, you do not want this table to show only the outliers,
-but *all* the dataset (i.e., both outlier and non-outlier observations) then
-it is possible to select the **All data** in the dropdown menu under "Choose
-an outlier detection method:".
+If, for some reason, you do not want this table to show only the
+outliers, but *all* the dataset (i.e., both outlier and
+non-outlier observations) then it is possible to select the **All
+data** in the drop-down menu under "Choose an outlier detection
+method:".
 
-Each row has a "link" in the leftmost column: if you click this,
-the reporter/partner/flow/item combination will be shown in the
-"Plots" tab.
+Each row can be clicked on and the reporter/partner/flow/item
+combination will be shown in the "Plots" tab.
 
 ![Table with outliers][outliers_table]
 
@@ -307,10 +295,11 @@ The meaning of the columns is self explanatory, except:
   of the US).
 * **perc.qty**:
   Percentage of the quantity of the transaction over the total
-  quantities traded by the reporter for that item (e.g., the quantity
-  of US imports of maize from Mexico over the total quantity of maize
-  imported by the US).
-* **corrected**: shows whether the observation has been already corrected.
+  quantities traded by the reporter for that item (e.g., the
+  quantity of US imports of maize from Mexico over the total
+  quantity of maize imported by the US).
+* **corrected**: shows whether the observation has been already
+  corrected.
 
 
 The table can be filtered by using the table headings. For
@@ -393,7 +382,7 @@ following:
 <pre>Last correction saved on 2017-06-07 (at 18:21:04), reporter: 642, partner: 616, item: 0112, flow: 1, year: 2012, method: Outlier correction.</pre>
 
 in the box above the corrections table if the saving was
-succesful. This is also shown in the next figure.
+successful. This is also shown in the next figure.
 
 ![Correction confirmation][correction_confirm]
 
@@ -421,8 +410,8 @@ previous one (as explained above).
 
 ![Delete correction][correction_delete]
 
-**This table should be saved in the SWS. Currently, this is
-not yet implemented.**
+This table is used by the `complete_tf_cpc` module to correct
+the anomalous observations detected in the validation process.
 
 ### Outliers stats
 
@@ -494,238 +483,11 @@ the graph). An example is shown in the following figure.
 
 ![Treemap, country distribution][graphs_treemap_expand]
 
-### Mapping
-
-**NOTE: this component is not being used as the mapping has been
-integrated into the `complete_tf_m49` module.**
-
-This component helps you to transform an XLSX file with mapped
-HS&gt;FCL codes into a CSV file of mapped codes to be uploaded
-into the SWS.
-
-Your XLSX file should be structured like shown in the following
-figure.
-
-![Mapping file][mapping_file]
-
-The following columns need to be present in the
-**unmapped_hs_2000_2015** sheet:
-
-* **Mapped by**: An optional string that indicates who did the
-  mapping
-* **year**: the year where the code was first found to be unmapped
-* **reporter_fao**: the FAO country code of the reporter relative
-  to the unmapped code
-* **reporter**: the name of the reporter
-* **flow**: flow of the unmapped code (1 = imports; 2 = exports)
-* **hs_chap**: chapter of the **hs** code
-* **hs_extend**: extension of the **hs** code to the maximum
-  HS length code used by the country for that year
-* **fcl**: the FCL code corresponding to **hs**
-
-In the previous figure you will notice that some HS codes were
-already mapped to FCL and that some of them are not yet mapped
-(there is an **NA** in the corresponding cell).
-
-You can process this file by clicking on "Browse..." as shown in
-the next figure.
-
-![Upload file][mapping_screen]
-
-You will get a confirmation that the file was successfully
-uploaded when the "Uploaded completed" message appears below the
-button and a table of mapped codes appears, as shown in the next
-figure.
-
-![Upload successful][mapping_uploaded]
-
-The tool will take care of doing three things:
-
-1. it will map unmapped codes that can be mapped by using a
-   generic 6-digit HS code (available in the following file:
-   <https://github.com/SWS-Methodology/faoswsTrade/blob/master/data-raw/HS2012-6%20digits%20Standard.xls>
-2. it will convert the original format of the file into the format
-   used in the mapping table used by the trade module (e.g., it
-   will generate a **startyear** and **endyear**) by combining the
-   manually updated codes with the automatically updated codes
-   (see previous point)
-3. it will generate a file with the remaining unmapped codes
-
-The CSV file of mapped codes ready to be uploaded into the SWS can
-be downloaded by clicking the "Download mapped codes" button,
-shown in the next figure.
-
-![Download mapped codes][mapping_download_mapped]
-
-The downloaded file will have the following columns:
-
-* **area**
-* **flow**
-* **fromcode**
-* **tocode**
-* **fcl**
-* **startyear**
-* **endyear**
-* **recordnumb**
-* **details**
-* **tl_description**
-
-**Note**: this is not a file you are supposed to work on. If for
-some reason you open this file, do not save any modification.
-Store this file somewhere in your local computer, and send it to
-Team A in order to have it appended to the mapping file available
-on SWS.
-
-The file with the remaining unmapped codes can be downloaded by
-clicking the "Download unmapped codes" button, as shown in the
-next figure.
-
-![Download unmapped codes][mapping_download_unmapped]
-
-This file will be your new working file, i.e., the file that you
-will continue to work on in order to map the missing codes. Please
-open this file, save it as an XLSX file and continue with the
-mapping process in the .xlsx file. Once you are ready to have
-another batch of mapped codes translated into the file that will
-be appended to the mapping file on SWS, start the process again
-(upload the XLSX file, let the tool map automatically some codes,
-store the CSV of mapped codes somewhere on your PC and send it to
-Team A, and finally continue the loop with a new working XLSX
-file).
-
-
-
-## Module/FAOSTAT comparison
-
-The "flows" module can be accessed at
-<http://hqlprsws1.hq.un.fao.org:3838/flows/>.
-
-### Rationale
-
-Before showing in detail the tool, an explanation about it
-existence is necessary: it allows to compare, with a handy visual
-presentation, the results from the new trade module with
-previously published FAOSTAT data. Given that FAOSTAT data
-underwent years of validation, it serves as a validation benchmark
-for the new module data. Discrepancies can be spotted very easily,
-allowing this way to validate new results.
-
-A key point in the tool is that it presents "small multiples" of
-the time series of module and FAOSTAT data. What a "small
-multiples" means is explained at
-<http://www.juiceanalytics.com/writing/better-know-visualization-small-multiples>.
-
-### Initial screen
-
-When you open the tool, it presents one main section composed of
-various small graphs representing the time series of
-commodity/country aggregates of imports and exports. The module
-data is given by the green line, while the FAOSTAT data is the red
-line (FAOSTAT data ends in 2013).
-
-The initial screen can be seen in the following figure.
-
-![Initial screen][total_initial]
-
-It is possible to scroll the graphs by pressing the buttons at the
-top of the page, as shown in the next figure.
-
-![Scroll graphs][total_scroll]
-
-The left side menu is very important as it allows you to: select
-the number of graphs to display, select the filters to show,
-filter the graphs by specific conditions, sort the graphs.
-
-![Left side menu][total_left_menu]
-
-#### Select the number of graphs to display
-
-If you find that there are too many graphs in the screen, or, on
-the contrary, that there are too few, you can select in how many
-rows/columns you want to split the central screen to put the
-graphs. It can be accessed in the left side menu, as shown in the
-next figure, where the number of rows is set to four and the
-number of columns to eight (like in the figure of the initial
-screen).
-
-![Left side menu, Grid][total_left_menu_grid]
-
-#### Add/remove labels
-
-If you know what the graphs represent, you may want to remove some
-labels so that the graphs increase a bit. For instance, in the
-first screen we know that all the graphs refer to "Africa" so that
-if we remove this label from below each graph, we do not loose any
-information. Actually, in this case you should be careful as if
-you start scrolling the graph other country aggregates may show up
-and you will lose this information. A more useful application of
-this is when you use the "Filter" so that you know that you will
-condition the graphs to some specific condition and you will not
-take the risk to remove information. The "Filter" menu will be
-shown below. For now, let us remove the "area" aggregate from the
-initial screen. It can be donw by deselecting the desired label
-from the "Labels" menu, as shown in the next figure. Notice that
-under each graph the "area" label disappeared.
-
-![Left side menu, Labels][total_left_menu_labels]
-
-Of course, if you want to add a label, you have to select the
-desired and unselected label.
-
-#### Filter by variables
-
-An useful feature is the possibility to condition the graphs to
-some specific values of the variables. For instance, you may be
-interest in comparing module and FAOSTAT quantity data relative to
-imports in Europe. This can be achieved by selecting the "Filter"
-menu, as shown in the next figure.
-
-![Left side menu, Filter][total_left_menu_filter]
-
-Once the menu is open, it shows the variables on which the
-conditioning can be done:
-
-* area
-* item
-* type
-* flow
-* ItemGroupCode (item's numeric code)
-* measuredTradeElement
-* GroupCode (area's numeric code)
-
-Following the example above, we can click on "area" and click on
-"Europe", then on "type" and click on "quantity", then on "flow"
-and click on "import". Note that the actual order in which you do
-the selection is not important. The filtering given in this
-example is shown in the next figures.
-
-![Left side menu, Filter by area][total_left_menu_filter_area]
-
-![Left side menu, Filter by type][total_left_menu_filter_type]
-
-![Left side menu, Filter by flow][total_left_menu_filter_flow]
-
-The filtering by variables can be multiple. For instance, if you
-want to see Europe's and Asia's import quantities, you can select
-"Asia" and "Europe" in the "area" variable, as shown in the
-following figure.
-
-![Left side menu, Filter by multiple areas][total_left_menu_filter_area_multiple]
-
-#### Sort by variables
-
-If you want to have plots in an order that follows some variable,
-you can do it by clicking the "Sort" menu and selecting the
-variable on which you want to sort the graphs.
-
-Consider the results as they appear in the previous figure: Asia
-comes before Europe (increasing alphabetical order). If you want
-to have Europe before Asia, you can select the "area" variable in
-the "Sort" menu.
-
-
 
 [initial]: assets/initial_screen.png
+[initial_username]: assets/initial_username.png
+[initial_reporter]: assets/initial_reporter.png
+[initial_item]: assets/initial_item.png
 [reporter_selection]: assets/plots_reporter.png
 [partner_selection]: assets/plots_partner.png
 [item_selection]: assets/plots_item.png
@@ -747,20 +509,5 @@ the "Sort" menu.
 [outliers_reporter]: assets/outliers_reporter.png
 [outliers_item]: assets/outliers_item.png
 [outliers_reporter_item]: assets/outliers_reporter_item.png
-[total_initial]: assets/total_initial.png
-[total_scroll]: assets/total_scroll.png
-[total_left_menu]: assets/total_left_menu.png
-[total_left_menu_grid]: assets/total_left_menu_grid.png
-[total_left_menu_labels]: assets/total_left_menu_labels.png
-[total_left_menu_filter]: assets/total_left_menu_filter.png
-[total_left_menu_filter_area]: assets/total_left_menu_filter_area.png
-[total_left_menu_filter_type]: assets/total_left_menu_filter_type.png
-[total_left_menu_filter_flow]: assets/total_left_menu_filter_flow.png
-[total_left_menu_filter_area_multiple]: assets/total_left_menu_filter_area_multiple.png
-[mapping_file]: assets/mapping_file.png
-[mapping_screen]: assets/mapping_screen.png
-[mapping_uploaded]: assets/mapping_uploaded.png
-[mapping_download_mapped]: assets/mapping_download_mapped.png
-[mapping_download_unmapped]: assets/mapping_download_unmapped.png
 
 <!-- vi: set ft=markdown: -->
