@@ -762,3 +762,5 @@ the "Sort" menu.
 [mapping_uploaded]: assets/mapping_uploaded.png
 [mapping_download_mapped]: assets/mapping_download_mapped.png
 [mapping_download_unmapped]: assets/mapping_download_unmapped.png
+
+<!-- vi: set ft=markdown: -->
