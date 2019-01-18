@@ -27,7 +27,8 @@ persistent_files <- file.path(share_drive, 'trade', 'validation_tool_files')
 
 app_mode <- yaml::yaml.load_file('config.yml')$mode
 
-lock_name              <- paste0(files_location, 'file.lock')
+# To see why next line is commented, see comment below on "lock_name"
+#lock_name              <- paste0(files_location, 'file.lock')
 fcl_2_cpc_file         <- paste0(files_location, 'fcl_2_cpc.csv')
 comtrade_partner_file  <- paste0(files_location, 'partnerAreas.json')
 comtrade_reporter_file <- paste0(files_location, 'reporterAreas.json')
@@ -1816,18 +1817,24 @@ server <- function(input, output, session) {
 
     removeModal()
 
-    if (file.exists(lock_name)) {
-      showModal(
-        modalDialog(
-          title = "Please wait",
-            "The file is being written by another user. Please try to synchronise in a while."
-          )
-        )
-    } else {
-      writeBin(1, lock_name)
-      saveRDS(values$corrections, file = values$corrections_file)
-      unlink(lock_name)
-    }
+    # XXX The file.lock is removed (and the corrections file is saved
+    # without checking lock) because now the corrections file is reporter
+    # specific (instead of a one-file-for-all), and only one person is
+    # supposed to work on corrections. In any case a lock mechanism can
+    # be useful, but it is left to future requirements.
+    #if (file.exists(lock_name)) {
+    #  showModal(
+    #    modalDialog(
+    #      title = "Please wait",
+    #        "The file is being written by another user. Please try to synchronise in a while."
+    #      )
+    #    )
+    #} else {
+    #  writeBin(1, lock_name)
+    #  saveRDS(values$corrections, file = values$corrections_file)
+    #  unlink(lock_name)
+    #}
+    saveRDS(values$corrections, file = values$corrections_file)
 
     # Read table, write table, load table.
 
