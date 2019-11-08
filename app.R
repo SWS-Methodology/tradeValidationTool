@@ -811,18 +811,18 @@ server <- function(input, output, session) {
 
      res <- res %>%
        mutate(
-         qty_orig = qty,
-         value_orig = value,
-         unit_value_orig = value/qty,
-         qty_mirror_orig = qty_mirror,
-         value_mirror_orig = value_mirror,
+         qty_orig               = qty,
+         value_orig             = value,
+         unit_value_orig        = value/qty,
+         qty_mirror_orig        = qty_mirror,
+         value_mirror_orig      = value_mirror,
          unit_value_mirror_orit = value_mirror/qty_mirror,
-         qty = qty_corr,
-         value = value_corr,
-         unit_value = value_corr/qty_corr,
-         qty_mirror = qty_mirror_corr,
-         value_mirror = value_mirror_corr,
-         unit_value_mirror = value_mirror_corr/qty_mirror_corr
+         qty                    = qty_corr,
+         value                  = value_corr,
+         unit_value             = value_corr/qty_corr,
+         qty_mirror             = qty_mirror_corr,
+         value_mirror           = value_mirror_corr,
+         unit_value_mirror      = value_mirror_corr/qty_mirror_corr
        ) %>%
        tbl_df()
 
@@ -1389,8 +1389,9 @@ server <- function(input, output, session) {
           input$choose_correction,
           'None'                = orig_var_value,
           'Measurement factor'  = orig_var_value * as.numeric(input$correction10),
-          'Mirror flow'         = (datasetInput()$data %>%
-            filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(values$flow == '1', 1.12, 1/1.12),
+          'Mirror flow'         =
+            (datasetInput()$data %>%
+             filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(values$flow == '1', 1.12, 1/1.12),
           # XXX below should be a function or a value stored somewhere
           'Outlier correction'  = {
             myvar <- switch(
@@ -1641,7 +1642,7 @@ server <- function(input, output, session) {
       tab_target = ''
 
       # XXX urlencode
-        values$mydb %>%
+      values$mydb %>%
         # Remove mirrored flows. Notice that it happens for the flag_value:
         # It happens that 'T' in flag_qty is a subset of 'T' in flag_value
         # (the remaining non-E flag_qty are either 'I-c' or 'E-s')
@@ -2225,14 +2226,6 @@ server <- function(input, output, session) {
      isolate({
        if (input$choose_misc_graph == 'Heatmap') {
 
-         #fntltp <- JS("
-         #            function(){
-         #              return this.series.xAxis.categories[this.point.x] + ' ~ ' +
-         #              this.series.yAxis.categories[this.point.y] + ': <b>' +
-         #              Highcharts.numberFormat(this.point.value, 2)+'</b>';
-         #            }
-         #          ")
-
         #isolate(
          values$db %>%
            group_by(reporter_name, timePointYears) %>%
@@ -2621,14 +2614,6 @@ server <- function(input, output, session) {
      })
    })
 
-   #output$summarytext <- renderPrint({
-   #  input$go
-
-   #  isolate(
-   #    datasetInput()$info
-   #    )
-   #})
-
    output$test_s <- renderTable(values$test_s)
 
    output$plotUV_coords <- renderUI({
@@ -2662,8 +2647,6 @@ server <- function(input, output, session) {
          style = style,
          p(HTML(paste0('Y:', input$plotUV_hover$y)))
        )
-
-       #HTML(paste('Y:', input$plotUV_hover$y))
      }
 
    })
@@ -2701,8 +2684,6 @@ server <- function(input, output, session) {
          style = style,
          p(HTML(paste0('Y:', input$plotQuantity_hover$y)))
        )
-
-       #HTML(paste('Y:', input$plotQuantity_hover$y))
      }
    })
 
@@ -2739,8 +2720,6 @@ server <- function(input, output, session) {
          style = style,
          p(HTML(paste0('Y:', input$plotValue_hover$y)))
        )
-
-       #HTML(paste('Y:', input$plotValue_hover$y))
      }
 
    })
@@ -3224,16 +3203,6 @@ server <- function(input, output, session) {
          suffix = c("_original", "_imputed")
        )
 
-       #g <- db_imputed_for_plot %>%
-       #  ggplot(aes(x = timePointYears, group = variable, colour = variable)) +
-       #    geom_line(aes(y = value_original)) +
-       #    #geom_line(aes(y = value_original), colour = 'red', size = 1.5) +
-       #    geom_line(aes(y = value_imputed)) +
-       #    #geom_line(aes(y = value_imputed), colour = 'green', size = 1.5) +
-       #    #scale_colour_manual(values = c('red', 'green')) +
-       #    facet_wrap(~variable, nrow = 3, scales = 'free') +
-       #    theme(legend.title = element_blank(), axis.title = element_blank(), legend.position = 'left')
-
        g <- gather(db_imputed_for_plot, key, var, -timePointYears, - variable) %>%
          mutate(key = stringr::str_replace(key, 'value_', '')) %>%
          ggplot(aes(x = as.character(timePointYears), y = var, group = key, colour = key)) +
@@ -3244,16 +3213,6 @@ server <- function(input, output, session) {
 
        ggplotly(g) %>%
          layout(legend = list(orientation = "h", y = -0.06, x = 0.45))
-
-       #db_imputed_for_plot %>%
-       #  gather(key, var, -timePointYears, - variable) %>%
-       #  ggplot(aes(x = timePointYears, y = var, group = key)) +
-       #    geom_line() +
-       #    facet_wrap(~variable, ncol = 1, scales = 'free')
-
-       #    #iris %>% ggplot(aes(x = Sepal.Length, y = Petal.Length, group = Species, color = 'Species')) + geom_point() + facet_wrap(~Species, ncol = 1)
-       #    g
-       #ggplotly(g, showlegend = TRUE) %>% layout(legend = list(orientation = "h", y = -0.1, x = 0.2))
      }
    })
 
