@@ -2603,114 +2603,49 @@ server <- function(input, output, session) {
 
    output$test_s <- renderTable(values$test_s)
 
-   output$plotUV_coords <-
-     renderUI({
-       if (is.null(input$plotUV_hover$y)) {
-         NULL
-       } else {
-         ######################################################
-         ## Credit: The code in this else clause comes from: ##
-         ##         https://gitlab.com/snippets/16220        ##
-         ######################################################
+   tooltip_well <- function(hover, add_top = 0) {
+     if (is.null(hover$y)) {
+       NULL
+     } else {
+       ######################################################
+       ## Credit: The code in this else clause comes from: ##
+       ##         https://gitlab.com/snippets/16220        ##
+       ######################################################
 
-         hover <- input$plotUV_hover
+       # calculate point position INSIDE the image as percent of total
+       # dimensions from left (horizontal) and from top (vertical)
+       left_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
+       top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
 
-         # calculate point position INSIDE the image as percent of total
-         # dimensions from left (horizontal) and from top (vertical)
-         left_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
-         top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
+       # calculate distance from left and bottom side of the picture in pixels
+       left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
+       top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
 
-         # calculate distance from left and bottom side of the picture in pixels
-         left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
-         top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
+       # create style property fot tooltip
+       # background color is set so tooltip is a bit transparent
+       # z-index is set so we are sure are tooltip will be on top
+       style <- paste0("position:absolute; z-index:100; background-color: rgba(245, 245, 245, 0.85); ",
+         "left:", left_px + 2, "px; top:", top_px + 2 + add_top, "px;")
 
-         # create style property fot tooltip
-         # background color is set so tooltip is a bit transparent
-         # z-index is set so we are sure are tooltip will be on top
-         style <- paste0("position:absolute; z-index:100; background-color: rgba(245, 245, 245, 0.85); ",
-           "left:", left_px + 2, "px; top:", top_px + 2, "px;")
+       # actual tooltip created as wellPanel
+       wellPanel(
+         style = style,
+         p(HTML(paste0('Y:', hover$y)))
+       )
+     }
+   }
 
-         # actual tooltip created as wellPanel
-         wellPanel(
-           style = style,
-           p(HTML(paste0('Y:', input$plotUV_hover$y)))
-         )
-       }
-     })
+   output$plotUV_coords <- renderUI({tooltip_well(input$plotUV_hover)})
 
    # Note: top_px is increased by 400 as this is the third graph
    # (plotOutput width = 400px by default)
    output$plotQuantity_coords <-
-     renderUI({
-       if (is.null(input$plotQuantity_hover$y)) {
-         NULL
-       } else {
-         ######################################################
-         ## Credit: The code in this else clause comes from: ##
-         ##         https://gitlab.com/snippets/16220        ##
-         ######################################################
-
-         hover <- input$plotQuantity_hover
-
-         # calculate point position INSIDE the image as percent of total
-         # dimensions from left (horizontal) and from top (vertical)
-         left_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
-         top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
-
-         # calculate distance from left and bottom side of the picture in pixels
-         left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
-         top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
-
-         # create style property fot tooltip
-         # background color is set so tooltip is a bit transparent
-         # z-index is set so we are sure are tooltip will be on top
-         style <- paste0("position:absolute; z-index:100; background-color: rgba(245, 245, 245, 0.85); ",
-           "left:", left_px + 2, "px; top:", top_px + 2 + 400, "px;")
-
-         # actual tooltip created as wellPanel
-         wellPanel(
-           style = style,
-           p(HTML(paste0('Y:', input$plotQuantity_hover$y)))
-         )
-       }
-     })
+     renderUI({tooltip_well(input$plotQuantity_hover, 400)})
 
    # Note: top_px is increased by 800 as this is the third graph
    # (plotOutput width = 400px by default)
    output$plotValue_coords <-
-     renderUI({
-       if (is.null(input$plotValue_hover$y)) {
-         NULL
-       } else {
-         ######################################################
-         ## Credit: The code in this else clause comes from: ##
-         ##         https://gitlab.com/snippets/16220        ##
-         ######################################################
-
-         hover <- input$plotValue_hover
-
-         # calculate point position INSIDE the image as percent of total
-         # dimensions from left (horizontal) and from top (vertical)
-         left_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
-         top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
-
-         # calculate distance from left and bottom side of the picture in pixels
-         left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
-         top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
-
-         # create style property fot tooltip
-         # background color is set so tooltip is a bit transparent
-         # z-index is set so we are sure are tooltip will be on top
-         style <- paste0("position:absolute; z-index:100; background-color: rgba(245, 245, 245, 0.85); ",
-           "left:", left_px + 2, "px; top:", top_px + 2 + 800, "px;")
-
-         # actual tooltip created as wellPanel
-         wellPanel(
-           style = style,
-           p(HTML(paste0('Y:', input$plotValue_hover$y)))
-         )
-       }
-     })
+     renderUI({tooltip_well(input$plotValue_hover, 800)})
 
    #output$plotUV <- plotly::renderPlotly({
    output$plotUV <- renderPlot({
