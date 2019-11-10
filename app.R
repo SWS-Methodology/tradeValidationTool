@@ -629,8 +629,6 @@ server <- function(input, output, session) {
   choose_data <- function(data = values$db, .flow = NA, .reporter = NA,
                           .partner = NA, .item = NA) {
 
-    browser()
-
     # This is important as if we leave it as a character dplyr's filter
     # will work, but it will require more time
     .flow <- as.integer(.flow)
