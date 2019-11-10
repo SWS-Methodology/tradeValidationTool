@@ -478,153 +478,186 @@ ui <- function(request) {
 # questa funzionalità allora si potrebbe eliminare
 server <- function(input, output, session) {
 
-
-  output$handle_cookies <- renderUI({
-    # javascript code to send data to shiny server
-    tags$script(paste0('
-
-                var my_cookies = Cookies.get(); 
-                if (typeof my_cookies != "undefined") {
-                  Shiny.onInputChange("cookies", my_cookies);
-                }
-
-
-                  document.getElementById("gousername").onclick = function() {
-                    Cookies.set(\'username\', \'', input$username, '\', { expires: 30 });
-                    var my_cookies = Cookies.get(); 
+  output$handle_cookies <-
+    renderUI({
+      # javascript code to send data to shiny server
+      tags$script(paste0('
+                  var my_cookies = Cookies.get(); 
+                  if (typeof my_cookies != "undefined") {
                     Shiny.onInputChange("cookies", my_cookies);
-                  };
+                  }
 
+                    document.getElementById("gousername").onclick = function() {
+                      Cookies.set(\'username\', \'', input$username, '\', { expires: 30 });
+                      var my_cookies = Cookies.get(); 
+                      Shiny.onInputChange("cookies", my_cookies);
+                    };'))
+    })
 
-                '))
-  })
+  output$corrections_separator <-
+    renderUI({
+      if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+        strong('Corrections')
+      } else {
+        NULL
+      }
+    })
 
-  output$corrections_separator <- renderUI({
-    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
-      strong('Corrections')
-    } else {
-      NULL
-    }
-  })
+  output$suggest10 <-
+    renderUI({
+      if (identical(values$choose_correction, "Measurement factor") &&
+          !identical(values$year2correct,  "")) {
+        powers(
+          datasetInput()$data %>%
+            filter(timePointYears == input$year2correct) %>%
+            select(unit_value),
+          datasetInput()$median_uv %>%
+            filter(timePointYears == input$year2correct) %>%
+            select(median)
+        )
+      } else {
+        NULL
+      }
+    })
 
-  output$suggest10 <- renderUI({
-    if (identical(values$choose_correction, "Measurement factor") && !identical(values$year2correct,  "")) {
-      powers(
-        datasetInput()$data %>%
-          filter(timePointYears == input$year2correct) %>%
-          select(unit_value),
-        datasetInput()$median_uv %>%
-          filter(timePointYears == input$year2correct) %>%
-          select(median)
-      )
-    } else {
-      NULL
-    }
-  })
+  output$variable2correct <-
+    renderUI({
+      if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+        selectInput(
+          "variable2correct",
+          "Variable to correct:",
+          c('Quantity', 'Value')
+        )
+      } else {
+        NULL
+      }
+    })
 
-  output$variable2correct <- renderUI({
-    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
-      selectInput("variable2correct",
-        "Variable to correct:",
-        c('Quantity', 'Value'))
-    } else {
-      NULL
-    }
-  })
+  output$year2correct <-
+    renderUI({
+      if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+        selectInput(
+          "year2correct",
+          "Choose a year to correct:",
+          years
+        )
+      } else {
+        NULL
+      }
+    })
 
-  output$year2correct <- renderUI({
-    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
-      selectInput("year2correct",
-        "Choose a year to correct:",
-        years)
-    } else {
-      NULL
-    }
-  })
+  output$correction10 <-
+    renderUI({
+      if (identical(values$choose_correction, "Measurement factor")) {
+        selectInput(
+          "correction10",
+          "Choose a correction to qty:",
+          c(0.0001, 0.001, 0.01, 0.1, 10, 100, 1000, 10000)
+        )
+      } else {
+        NULL
+      }
+    })
 
-  output$correction10 <- renderUI({
-    if (identical(values$choose_correction, "Measurement factor")) {
-      selectInput("correction10",
-        "Choose a correction to qty:",
-        c(0.0001, 0.001, 0.01, 0.1, 10, 100, 1000, 10000))
-    } else {
-      NULL
-    }
-  })
+  output$go10 <-
+    renderUI({
+      if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+        actionButton("go10", "Apply correction")
+      } else {
+        NULL
+      }
+    })
 
-  output$go10 <- renderUI({
-    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
-      actionButton("go10", "Apply correction")
-    } else {
-      NULL
-    }
-  })
+  output$goremove <-
+    renderUI({
+      if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+        actionButton("goremove", "Hide old series")
+      } else {
+        NULL
+      }
+    })
 
-  output$goremove <- renderUI({
-    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
-      actionButton("goremove", "Hide old series")
-    } else {
-      NULL
-    }
-  })
+  output$confirm_correction <-
+    renderUI({
+      if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+        actionButton("confirm_correction", "Confirm correction")
+      } else {
+        NULL
+      }
+    })
 
-  output$confirm_correction <- renderUI({
-    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
-      actionButton("confirm_correction", "Confirm correction")
-    } else {
-      NULL
-    }
-  })
+  output$choose_correction_ui <-
+    renderUI({
+      if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
+        selectInput(
+          "choose_correction",
+          "Choose a type of correction:",
+          values$types_correction
+        )
+      } else {
+        NULL
+      }
+    })
 
-  output$choose_correction_ui <- renderUI({
-    if (!(is.na(values$partner) && is.na(values$item) && is.na(values$flow))) {
-      selectInput("choose_correction",
-        "Choose a type of correction:",
-        values$types_correction)
-    } else {
-      NULL
-    }
-  })
-
-  output$reporter_ui <- renderUI({
+  output$reporter_ui <-
+    renderUI({
       if (input$go_db == 0) {
         NULL
       } else {
         HTML(paste0('<p>Reporter: <strong>', values$reporter, '</strong>'))
       }
-  })
+    })
 
-  output$partner_ui <- renderUI({
+  output$partner_ui <-
+    renderUI({
       if (input$go_db == 0) {
         NULL
       } else {
-        selectInput("partner", "Choose a partner:", partners, selected = values$partner)
+        selectInput(
+          "partner",
+          "Choose a partner:",
+          partners,
+          selected = values$partner
+        )
       }
-  })
+    })
 
-  output$item_ui <- renderUI({
+  output$item_ui <-
+    renderUI({
       if (input$go_db == 0) {
         NULL
       } else {
-        selectInput("item", "Choose an item:", items, selected = values$item)
+        selectInput(
+          "item",
+          "Choose an item:",
+          items,
+          selected = values$item
+        )
       }
-  })
+    })
 
-  output$flow_ui <- renderUI({
+  output$flow_ui <-
+    renderUI({
       if (input$go_db == 0) {
         NULL
       } else {
-        selectInput("flow", "Choose a flow:", c(import = 1, export = 2), selected = values$flow)
+        selectInput(
+          "flow",
+          "Choose a flow:",
+          c(import = 1, export = 2),
+          selected = values$flow
+        )
       }
-  })
+    })
 
-  output$show_username <- renderText({
+  output$show_username <-
+    renderText({
       if (length(input$cookies$username) == 0) {
         paste('No user name')
       } else {
         paste("User:", input$cookies$username)
       }
-  })
+    })
 
   choose_data <- function(data = values$db, .flow = NA, .reporter = NA,
                           .partner = NA, .item = NA) {
@@ -633,7 +666,8 @@ server <- function(input, output, session) {
     # will work, but it will require more time
     .flow <- as.integer(.flow)
 
-    tmp <- data %>%
+    tmp <-
+      data %>%
       select(
         geographicAreaM49Reporter,
         geographicAreaM49Partner,
@@ -674,7 +708,8 @@ server <- function(input, output, session) {
       )
     }
 
-    tmp_total <- tmp %>%
+    tmp_total <-
+      tmp %>%
       filter(reporter_name == .reporter) %>%
       group_by(timePointYears) %>%
       summarise_at(c('qty', 'value'), sum, na.rm = TRUE) %>%
@@ -683,33 +718,37 @@ server <- function(input, output, session) {
       complete(timePointYears = sort(years[years != ""]))
 
     
-    tmp_1 <- tmp %>%
+    tmp_1 <-
+      tmp %>%
       mutate(unit_value = value / qty) %>%
       group_by(timePointYears) %>%
       summarise(
-        median_world = median(unit_value, na.rm=TRUE),
+        median_world = median(unit_value, na.rm = TRUE),
         avg_world    = sum(value, na.rm = TRUE) / sum(qty, na.rm = TRUE)
       ) %>%
       ungroup()
 
-    tmp_2 <- tmp %>%
+    tmp_2 <-
+      tmp %>%
       filter(reporter_name == .reporter) %>%
       group_by(timePointYears) %>%
       summarise(
-        median = median(unit_value, na.rm=TRUE),
+        median = median(unit_value, na.rm = TRUE),
         avg    = sum(value, na.rm = TRUE) / sum(qty, na.rm = TRUE)
       ) %>%
       ungroup()
 
     n_partners <- length(unique(tmp$partner_name[tmp$reporter_name == .reporter]))
 
-    info <- tmp %>%
+    info <-
+      tmp %>%
       filter(reporter_name == .reporter) %>%
       select(partner_name, timePointYears) %>%
       count(timePointYears) %>%
       complete(timePointYears = sort(years[years != ""]))
 
-    db_reporter <- tmp %>%
+    db_reporter <-
+      tmp %>%
       filter(reporter_name == .reporter, partner_name == .partner) %>%
       complete(
         reporter_name,
@@ -723,15 +762,16 @@ server <- function(input, output, session) {
       ) %>%
       arrange(partner_name, timePointYears) %>%
       mutate(
-        movav_qty        = zoo::rollapply(lag(qty), 3, mean, fill=NA, align='right'),
-        movav_value      = zoo::rollapply(lag(value), 3, mean, fill=NA, align='right'),
+        movav_qty        = zoo::rollapply(lag(qty), 3, mean, fill = NA, align = 'right'),
+        movav_value      = zoo::rollapply(lag(value), 3, mean, fill = NA, align = 'right'),
         movav_unit_value = movav_value / movav_qty
       )
 
-    uv_stats <- tmp_1 %>%
-      left_join(tmp_2, by = 'timePointYears')
+    uv_stats <-
+      left_join(tmp_1, tmp_2, by = 'timePointYears')
 
-    db_partner <- data %>%
+    db_partner <-
+      data %>%
       filter(
         flow          == ifelse(.flow == 1L, 2L, 1L),
         item_name     == .item,
@@ -750,7 +790,8 @@ server <- function(input, output, session) {
       ) %>%
       mutate(unit_value_mirror = value_mirror / qty_mirror)
 
-    res <- db_reporter %>%
+    res <-
+      db_reporter %>%
       left_join(db_partner, by = 'timePointYears') %>%
       left_join(uv_stats,   by = 'timePointYears')
 
@@ -789,11 +830,16 @@ server <- function(input, output, session) {
                                                'qty_corr',
                                                'value_corr')
 
-          res <- sub_corrections_table[res %>% as.data.table(), , on = c('geographicAreaM49Reporter', 'geographicAreaM49Partner', 'timePointYears', 'measuredItemCPC', 'flow')]
+          res <-
+            sub_corrections_table[
+              res %>% as.data.table(),
+              on = c('geographicAreaM49Reporter', 'geographicAreaM49Partner',
+                     'timePointYears', 'measuredItemCPC', 'flow')
+            ]
 
           res[is.na(corrected), corrected := FALSE]
 
-          res$qty_mirror_corr <- NA_real_
+          res$qty_mirror_corr   <- NA_real_
           res$value_mirror_corr <- NA_real_
 
           ## When the partner is going to be corrected, it should have
@@ -801,8 +847,13 @@ server <- function(input, output, session) {
           cond <- res$corrected & grepl('T', res$flag_value_mirror)
 
           res[cond & !is.na(qty_corr), qty_mirror_corr := qty_corr]
+
           # In this case the flow is the reporter's
-          res[cond & !is.na(value_corr), value_mirror_corr := as.numeric(ifelse(flow == 2L, value_corr * 1.12, value_corr / 1.12))]
+          res[
+            cond & !is.na(value_corr),
+            value_mirror_corr :=
+              as.numeric(ifelse(flow == 2L, value_corr * 1.12, value_corr / 1.12))
+          ]
 
           # Flag NEEDS CORRECTION
           res[!is.na(corrected) & !is.na(value_corr), flag_value        := 'XXX']
@@ -856,7 +907,8 @@ server <- function(input, output, session) {
 
 
 
-  mutate_db_imputed <- function(data = NA, to_impute = NA, correct = NA, original = NA, variable = NA) {
+  mutate_db_imputed <- function(data = NA, to_impute = NA, correct = NA,
+                                original = NA, variable = NA) {
 
     data[[to_impute]] <- ifelse(data$timePointYears == input$year2correct, correct, original)
 
@@ -866,23 +918,27 @@ server <- function(input, output, session) {
 
   }
 
-  combine_corrections <- function(working = NA, file = NA, remove = NULL, new = NULL) {
+  combine_corrections <- function(working = NA, file = NA,
+                                  remove = NULL, new = NULL) {
+
       corrections_last <- readRDS(file)
 
       # XXX check whether using dplyr::union is faster
-      delta_corrections <- anti_join(
-        corrections_last,
-        working,
-        by = c("reporter", "partner", "year", "item", "flow")
-      )
-
-      # Eventually remove a correction that is beign deleted
-      if (!is.null(remove)) {
-        delta_corrections <- anti_join(
-          delta_corrections,
-          remove,
+      delta_corrections <-
+        anti_join(
+          corrections_last,
+          working,
           by = c("reporter", "partner", "year", "item", "flow")
         )
+
+      # Eventually remove a correction that is being deleted
+      if (!is.null(remove)) {
+        delta_corrections <-
+          anti_join(
+            delta_corrections,
+            remove,
+            by = c("reporter", "partner", "year", "item", "flow")
+          )
       }
 
       bind_rows(
@@ -956,58 +1012,70 @@ server <- function(input, output, session) {
     year2correct          = NA
   )
 
-  observeEvent(input$reporter_start, {
+  observeEvent(
+    input$reporter_start,
+    {
+      values$reporter <- input$reporter_start
 
-               values$reporter <- input$reporter_start
+      if (input$reporter_start != "") {
+        rep_code <- (filter(db, reporter_name == input$reporter_start) %>% distinct(geographicAreaM49Reporter))[[1]]
 
-               if (input$reporter_start != "") {
-                 rep_code <- (filter(db, reporter_name == input$reporter_start) %>% distinct(geographicAreaM49Reporter))[[1]]
+        values$corrections_file <- file.path(corrections_dir, rep_code, 'corrections_table.rds')
 
-                 values$corrections_file <- file.path(corrections_dir, rep_code, 'corrections_table.rds')
+        if (!file.exists(values$corrections_file)) {
+          dir.create(file.path(corrections_dir, rep_code))
+          initial <- readRDS(file.path(corrections_dir, 'corrections_table.rds')) %>% slice(0)
+          saveRDS(initial, file = values$corrections_file)
+        }
 
-                 if (!file.exists(values$corrections_file)) {
-                   dir.create(file.path(corrections_dir, rep_code))
-                   initial <- readRDS(file.path(corrections_dir, 'corrections_table.rds')) %>% slice(0)
-                   saveRDS(initial, file = values$corrections_file)
-                 }
+        values$corrections <- readRDS(values$corrections_file)
 
-                 values$corrections <- readRDS(values$corrections_file)
+        saveRDS(values$corrections, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M%S'), '\\1'), values$corrections_file))
+      }
 
-                 saveRDS(values$corrections, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M%S'), '\\1'), values$corrections_file))
-               }
-
-  })
+    }
+  )
 
   observeEvent(input$partner, {values$partner <- input$partner})
+
   observeEvent(input$item, {values$item <- input$item})
+
   observeEvent(input$flow, {values$flow <- input$flow})
+
   observeEvent(input$choose_correction, {values$choose_correction <- input$choose_correction})
+
   observeEvent(input$year2correct, {values$year2correct <- input$year2correct})
 
-  observeEvent(input$multiplecorrections, {
-               values$types_correction <-
-                 if (input$multiplecorrections) {
-                 c(
-                   'Measurement factor'
-                 )
-               } else {
-                 types_correction
-               }
-  })
-
-  observeEvent(input$show_full_table, {
-    if (input$outlier_method == 'Fixed threshold') {
-      values$mydb <- mutate(values$mydb, out = outman)
-    } else if (input$outlier_method == 'Variable threshold') {
-      values$mydb <- mutate(values$mydb, out = outp)
-    } else if (input$outlier_method == '100 median') {
-      values$mydb <- mutate(values$mydb, out = outmw100)
-    } else if (input$outlier_method == 'Boxplot') {
-      values$mydb <- mutate(values$mydb, out = outM)
-    } else {
-      values$mydb <- mutate(values$mydb, out = 1L)
+  observeEvent(
+    input$multiplecorrections,
+    {
+      values$types_correction <-
+        if (input$multiplecorrections) {
+        c(
+          'Measurement factor'
+        )
+      } else {
+        types_correction
+      }
     }
-  })
+  )
+
+  observeEvent(
+    input$show_full_table,
+    {
+      if (input$outlier_method == 'Fixed threshold') {
+        values$mydb <- mutate(values$mydb, out = outman)
+      } else if (input$outlier_method == 'Variable threshold') {
+        values$mydb <- mutate(values$mydb, out = outp)
+      } else if (input$outlier_method == '100 median') {
+        values$mydb <- mutate(values$mydb, out = outmw100)
+      } else if (input$outlier_method == 'Boxplot') {
+        values$mydb <- mutate(values$mydb, out = outM)
+      } else {
+        values$mydb <- mutate(values$mydb, out = 1L)
+      }
+    }
+  )
 
   #observeEvent(input$datatable_rows_selected, {
   #  row <- input$datatable_rows_selected 
@@ -1015,8 +1083,9 @@ server <- function(input, output, session) {
   #  updateTabsetPanel(session, "mainPanel", selected = "tab2")
   #})
 
-  observeEvent(input$go_db, {
-
+  observeEvent(
+    input$go_db,
+    {
       if (is.null(values$mydb)) {
 
         values$db <- db
@@ -1027,7 +1096,8 @@ server <- function(input, output, session) {
           values$mydb <- filter(values$mydb, item_name %in% input$item_start)
         }
       }
-  })
+    }
+  )
 
   observeEvent(input$go, values$shouldShow <- TRUE)
 
@@ -1035,98 +1105,284 @@ server <- function(input, output, session) {
 
   observeEvent(input$goremove, values$remove_old <- !values$remove_old)
 
-  observeEvent(input$okCorrection, {
+  observeEvent(
+    input$okCorrection,
+    {
+      removeModal()
 
-    removeModal()
-
-    values$correct_note <- switch(
-      input$choose_correction,
-      'None'               = NA,
-      'Measurement factor' = ifelse(input$multiplecorrections, 'Multiple corrections', NA),
-      'Mirror flow'        = NA,
-      'Outlier correction' = input$correction_outlier,
-      'Expert knowledge'   = NA
-    )
-
-    if (input$choose_correction == 'Expert knowledge') {
-      values$analyst_note <- input$note_by_expert
-    } else if (input$choose_correction == 'None') {
-      values$analyst_note <- input$note_by_analyst_none
-    } else {
-      values$analyst_note <- input$note_by_analyst
-    }
-
-    reporter_code <- (values$db %>%
-      select(geographicAreaM49Reporter, reporter_name) %>%
-      distinct() %>%
-      filter(reporter_name == values$reporter))[['geographicAreaM49Reporter']]
-
-    item_code <- (values$db %>%
-      select(measuredItemCPC, item_name) %>%
-      distinct() %>%
-      filter(item_name == values$item))[['measuredItemCPC']]
-
-    if (input$multiplecorrections) {
-      db_all_partners <- values$db %>% filter(reporter_name == values$reporter, flow == values$flow, item_name == values$item, timePointYears == input$year2correct)
-
-      # Check whether there are already saved corrections. If that's
-      # the case, remove the partner from the list of those that will
-      # get corrections, and add it to the visualised string. The following
-      # variable will be set to FALSE, but user will be notified by string.
-      values$dup_correction <- FALSE
-
-      partners_corrected <- ''
-
-      # zeros rows => no saved partners
-      already_saved <-
-        semi_join(
-          values$corrections %>% mutate(year = as.character(year)),
-          db_all_partners,
-          by = c('flow',
-                 'reporter' = 'geographicAreaM49Reporter',
-                 'item'     = 'measuredItemCPC',
-                 'year'     = 'timePointYears')
+      values$correct_note <-
+        switch(
+          input$choose_correction,
+          'None'               = NA,
+          'Measurement factor' = ifelse(input$multiplecorrections, 'Multiple corrections', NA),
+          'Mirror flow'        = NA,
+          'Outlier correction' = input$correction_outlier,
+          'Expert knowledge'   = NA
         )
 
-      if (nrow(already_saved) > 0) {
-
-        partners_corrected <- paste(already_saved$partner, collapse = ', ')
-
-        db_all_partners <-
-          anti_join(
-            db_all_partners,
-            already_saved,
-            by = c('flow',
-                   'geographicAreaM49Reporter' = 'reporter',
-                   'geographicAreaM49Partner'  = 'partner',
-                   'measuredItemCPC'           = 'item',
-                   'timePointYears'            = 'year')
-          )
+      if (input$choose_correction == 'Expert knowledge') {
+        values$analyst_note <- input$note_by_expert
+      } else if (input$choose_correction == 'None') {
+        values$analyst_note <- input$note_by_analyst_none
+      } else {
+        values$analyst_note <- input$note_by_analyst
       }
 
-      all_partners <- unique(db_all_partners$geographicAreaM49Partner)
+      reporter_code <- (values$db %>%
+        select(geographicAreaM49Reporter, reporter_name) %>%
+        distinct() %>%
+        filter(reporter_name == values$reporter))[['geographicAreaM49Reporter']]
 
-      progress <- Progress$new(session, min = 1, max = length(all_partners))
-      progress$set(message = 'Calculation in progress', detail = 'This may take a while...')
-      on.exit(progress$close())
+      item_code <- (values$db %>%
+        select(measuredItemCPC, item_name) %>%
+        distinct() %>%
+        filter(item_name == values$item))[['measuredItemCPC']]
+
+      if (input$multiplecorrections) {
+
+        db_all_partners <-
+          values$db %>%
+          filter(
+            reporter_name == values$reporter,
+            flow == values$flow,
+            item_name == values$item,
+            timePointYears == input$year2correct
+          )
+
+        # Check whether there are already saved corrections. If that's
+        # the case, remove the partner from the list of those that will
+        # get corrections, and add it to the visualised string. The following
+        # variable will be set to FALSE, but user will be notified by string.
+        values$dup_correction <- FALSE
+
+        partners_corrected <- ''
+
+        # zeros rows => no saved partners
+        already_saved <-
+          semi_join(
+            mutate(values$corrections, year = as.character(year)),
+            db_all_partners,
+            by = c('flow',
+                   'reporter' = 'geographicAreaM49Reporter',
+                   'item'     = 'measuredItemCPC',
+                   'year'     = 'timePointYears')
+          )
+
+        if (nrow(already_saved) > 0) {
+
+          partners_corrected <- paste(already_saved$partner, collapse = ', ')
+
+          db_all_partners <-
+            anti_join(
+              db_all_partners,
+              already_saved,
+              by = c('flow',
+                     'geographicAreaM49Reporter' = 'reporter',
+                     'geographicAreaM49Partner'  = 'partner',
+                     'measuredItemCPC'           = 'item',
+                     'timePointYears'            = 'year')
+            )
+        }
+
+        all_partners <- unique(db_all_partners$geographicAreaM49Partner)
+
+        progress <- Progress$new(session, min = 1, max = length(all_partners))
+
+        progress$set(message = 'Calculation in progress', detail = 'This may take a while...')
+
+        on.exit(progress$close())
 
 
-      string_corrections <- ''
-      for (partner_code in all_partners) {
+        string_corrections <- ''
 
-        db_single_partner <- db_all_partners %>% filter(geographicAreaM49Partner == partner_code)
+        for (partner_code in all_partners) {
 
-        # XXX maybe this check is unnecessary
-        if (nrow(db_single_partner) > 0) {
+          db_single_partner <-
+            db_all_partners %>%
+            filter(geographicAreaM49Partner == partner_code)
+
+          # XXX maybe this check is unnecessary
+          if (nrow(db_single_partner) > 0) {
+            data_original <- if (input$variable2correct == 'Quantity') {
+                db_single_partner[['qty']]
+              } else {
+                db_single_partner[['value']]
+              }
+
+            # XXX this is valid only for 'Measurement factor' as it's
+            # the only one that we allow for multiple corrections.
+            values$data_correct <- data_original * as.numeric(input$correction10)
+
+            corrections_new_row <-
+              data_frame(
+                reporter         = reporter_code,
+                partner          = partner_code,
+                year             = as.integer(input$year2correct),
+                item             = item_code,
+                flow             = as.integer(values$flow),
+                data_original    = data_original,
+                data_type        = ifelse(input$variable2correct == 'Quantity', 'qty', 'value'),
+                correction_level = 'CPC', # XXX not necessarily
+                correction_hs    = NA, # XXX not necessarily (see above)
+                correction_input = as.numeric(values$data_correct),
+                correction_type  = input$choose_correction,
+                correction_note  = values$correct_note,
+                note_analyst     = values$analyst_note,
+                note_supervisor  = NA,
+                name_analyst     = input$cookies$username,
+                name_supervisor  = NA,
+                date_correction  = format(Sys.time(), "%Y-%m-%d-%H-%M-%S"),
+                date_validation  = NA
+              )
+
+            values$corrections <-
+              combine_corrections(
+                working = values$corrections,
+                file    = values$corrections_file,
+                new     = corrections_new_row
+              )
+
+            ### XXX SAVECORR
+            saveRDS(values$corrections, values$corrections_file)
+
+            output$corrections_message <-
+              renderText(
+                paste0(
+                  'Last correction saved on ',
+                    format(Sys.time(), "%Y-%m-%d"),
+                    " (at ", format(Sys.time(), "%H:%M:%S"), ")",
+                  ', reporter: ', reporter_code, 
+                  ', partner: ' , partner_code, 
+                  ', item: '    , item_code, 
+                  ', flow: '    , as.integer(values$flow), 
+                  ', year: '    , input$year2correct,
+                  ', method: '  , input$choose_correction, '.'
+                )
+              )
+
+
+            string_corrections <- paste(string_corrections, partner_code)
+
+            progress$inc(amount = 1)
+
+            Sys.sleep(2) # in order to (try to) prevent overwite issues
+          }
+        }
+
+        if (nchar(partners_corrected) > 0) {
+          string_corrections <-
+            paste0(
+              string_corrections,
+              '.\nCorrections were NOT saved for the following partners: ',
+              partners_corrected,
+              ' (they already had corrections).'
+            )
+        }
+
+        values$xxx <- string_corrections
+
+        output$corrections_message <-
+          renderText(
+            paste('Corrections were saved for the following partners:',
+                           string_corrections)
+          )
+      } else {
+
+        partner_code <-
+          (values$db %>%
+          select(geographicAreaM49Partner, partner_name) %>%
+          distinct() %>%
+          filter(partner_name == values$partner))[['geographicAreaM49Partner']]
+
+        # XXX The code below for the Quantity and Value (when != Quantity) is duplicated: refactor
+        values$data_correct <- if (input$variable2correct == 'Quantity') {
+          orig_var_value <- (datasetInput()$data %>%
+                             filter(timePointYears == input$year2correct))[['qty']]
+
+          switch(
+            input$choose_correction,
+            'None'                = orig_var_value,
+            'Measurement factor'  = orig_var_value * as.numeric(input$correction10),
+            'Mirror flow'         = (datasetInput()$data %>%
+              filter(timePointYears == input$year2correct))[['qty_mirror']],
+            # XXX below should be a function or a value stored somewhere
+            'Outlier correction'  = {
+              myvar <- switch(
+                input$correction_outlier,
+                'Moving average'  = 'movav_unit_value',
+                'Median partners' = 'median_uv',
+                'Median world'    = 'median_uv_world'
+              )
+
+              tmp_value <-
+                (datasetInput()$data %>%
+                filter(timePointYears == input$year2correct))[['value']]
+
+              # XXX ugliness 100%
+              s <- datasetInput()[[myvar]]
+
+              tmp_value / as.numeric(s[s$timePointYears == input$year2correct, 2])
+            },
+            'Expert knowledge' = as.numeric(input$correction_expert)
+          )
+        } else { # input$variable2correct == 'Value'
+          orig_var_value <-
+            (datasetInput()$data %>%
+             filter(timePointYears == input$year2correct))[['value']]
+
+          switch(
+            input$choose_correction,
+            'None'                = orig_var_value,
+            'Measurement factor'  = orig_var_value * as.numeric(input$correction10),
+            'Mirror flow'         =
+              (datasetInput()$data %>%
+               filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(values$flow == '1', 1.12, 1/1.12),
+            # XXX below should be a function or a value stored somewhere
+            'Outlier correction'  = {
+              myvar <- switch(
+                input$correction_outlier,
+                'Moving average'  = 'movav_unit_value',
+                'Median partners' = 'median_uv',
+                'Median world'    = 'median_uv_world'
+              )
+
+              tmp_qty <-
+                (datasetInput()$data %>%
+                filter(timePointYears == input$year2correct))[['qty']]
+
+              # XXX ugliness 100%
+              s <- datasetInput()[[myvar]]
+
+              tmp_qty * as.numeric(s[s$timePointYears == input$year2correct, 2])
+            },
+            'Expert knowledge' = as.numeric(input$correction_expert)
+          )
+        }
+
+        tmp <-
+          values$corrections %>%
+          filter(
+            reporter  == reporter_code,
+            partner   == partner_code,
+            flow      == as.integer(values$flow),
+            item      == item_code,
+            year      == as.integer(input$year2correct),
+            data_type == ifelse(input$variable2correct == 'Quantity', 'qty', 'value')
+          )
+
+        if (nrow(tmp) > 0) {
+          output$corrections_message <-
+            renderText('Sorry, the correction
+              cannot be saved as there is already an existing correction.')
+          values$dup_correction <- TRUE
+        } else {
+          values$dup_correction <- FALSE
+
           data_original <- if (input$variable2correct == 'Quantity') {
-              db_single_partner[['qty']]
+              (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['qty']]
             } else {
-              db_single_partner[['value']]
+              (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value']]
             }
-
-          # XXX this is valid only for 'Measurement factor' as it's
-          # the only one that we allow for multiple corrections.
-          values$data_correct <- data_original * as.numeric(input$correction10)
 
           corrections_new_row <- data_frame(
             reporter         = reporter_code,
@@ -1171,189 +1427,29 @@ server <- function(input, output, session) {
               ', method: '  , input$choose_correction, '.'
             )
           )
-
-
-          string_corrections <- paste(string_corrections, partner_code)
-
-          progress$inc(amount = 1)
-
-          Sys.sleep(2) # in order to (try to) prevent overwite issues
         }
       }
-
-      if (nchar(partners_corrected) > 0) {
-        string_corrections <-
-          paste0(
-            string_corrections,
-            '.\nCorrections were NOT saved for the following partners: ',
-            partners_corrected,
-            ' (they already had corrections).'
-          )
-      }
-
-      values$xxx <- string_corrections
-      output$corrections_message <-
-        renderText(paste('Corrections were saved for the following partners:',
-                         string_corrections))
-    } else {
-
-      partner_code <- (values$db %>%
-        select(geographicAreaM49Partner, partner_name) %>%
-        distinct() %>%
-        filter(partner_name == values$partner))[['geographicAreaM49Partner']]
-
-      # XXX The code below for the Quantity and Value (when != Quantity) is duplicated: refactor
-      values$data_correct <- if (input$variable2correct == 'Quantity') {
-        orig_var_value <- (datasetInput()$data %>%
-                           filter(timePointYears == input$year2correct))[['qty']]
-
-        switch(
-          input$choose_correction,
-          'None'                = orig_var_value,
-          'Measurement factor'  = orig_var_value * as.numeric(input$correction10),
-          'Mirror flow'         = (datasetInput()$data %>%
-            filter(timePointYears == input$year2correct))[['qty_mirror']],
-          # XXX below should be a function or a value stored somewhere
-          'Outlier correction'  = {
-            myvar <- switch(
-              input$correction_outlier,
-              'Moving average'  = 'movav_unit_value',
-              'Median partners' = 'median_uv',
-              'Median world'    = 'median_uv_world'
-            )
-
-            tmp_value <- (datasetInput()$data %>%
-              filter(timePointYears == input$year2correct))[['value']]
-
-            # XXX ugliness 100%
-            s <- datasetInput()[[myvar]]
-
-            tmp_value / as.numeric(s[s$timePointYears == input$year2correct, 2])
-          },
-          'Expert knowledge' = as.numeric(input$correction_expert)
-        )
-      } else { # input$variable2correct == 'Value'
-        orig_var_value <- (datasetInput()$data %>%
-                           filter(timePointYears == input$year2correct))[['value']]
-
-        switch(
-          input$choose_correction,
-          'None'                = orig_var_value,
-          'Measurement factor'  = orig_var_value * as.numeric(input$correction10),
-          'Mirror flow'         =
-            (datasetInput()$data %>%
-             filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(values$flow == '1', 1.12, 1/1.12),
-          # XXX below should be a function or a value stored somewhere
-          'Outlier correction'  = {
-            myvar <- switch(
-              input$correction_outlier,
-              'Moving average'  = 'movav_unit_value',
-              'Median partners' = 'median_uv',
-              'Median world'    = 'median_uv_world'
-            )
-
-            tmp_qty <- (datasetInput()$data %>%
-              filter(timePointYears == input$year2correct))[['qty']]
-
-            # XXX ugliness 100%
-            s <- datasetInput()[[myvar]]
-
-            tmp_qty * as.numeric(s[s$timePointYears == input$year2correct, 2])
-          },
-          'Expert knowledge' = as.numeric(input$correction_expert)
-        )
-      }
-
-      tmp <- values$corrections %>%
-        filter(
-          reporter  == reporter_code,
-          partner   == partner_code,
-          flow      == as.integer(values$flow),
-          item      == item_code,
-          year      == as.integer(input$year2correct),
-          data_type == ifelse(input$variable2correct == 'Quantity', 'qty', 'value')
-        )
-
-      if (nrow(tmp) > 0) {
-        output$corrections_message <- renderText('Sorry, the correction
-          cannot be saved as there is already an existing correction.')
-        values$dup_correction <- TRUE
-      } else {
-        values$dup_correction <- FALSE
-
-        data_original <- if (input$variable2correct == 'Quantity') {
-            (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['qty']]
-          } else {
-            (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value']]
-          }
-
-        corrections_new_row <- data_frame(
-          reporter         = reporter_code,
-          partner          = partner_code,
-          year             = as.integer(input$year2correct),
-          item             = item_code,
-          flow             = as.integer(values$flow),
-          data_original    = data_original,
-          data_type        = ifelse(input$variable2correct == 'Quantity', 'qty', 'value'),
-          correction_level = 'CPC', # XXX not necessarily
-          correction_hs    = NA, # XXX not necessarily (see above)
-          correction_input = as.numeric(values$data_correct),
-          correction_type  = input$choose_correction,
-          correction_note  = values$correct_note,
-          note_analyst     = values$analyst_note,
-          note_supervisor  = NA,
-          name_analyst     = input$cookies$username,
-          name_supervisor  = NA,
-          date_correction  = format(Sys.time(), "%Y-%m-%d-%H-%M-%S"),
-          date_validation  = NA
-        )
-
-        values$corrections <- combine_corrections(
-          working = values$corrections,
-          file    = values$corrections_file,
-          new     = corrections_new_row
-        )
-
-        ### XXX SAVECORR
-        saveRDS(values$corrections, values$corrections_file)
-
-        output$corrections_message <- renderText(
-          paste0(
-            'Last correction saved on ',
-              format(Sys.time(), "%Y-%m-%d"),
-              " (at ", format(Sys.time(), "%H:%M:%S"), ")",
-            ', reporter: ', reporter_code, 
-            ', partner: ' , partner_code, 
-            ', item: '    , item_code, 
-            ', flow: '    , as.integer(values$flow), 
-            ', year: '    , input$year2correct,
-            ', method: '  , input$choose_correction, '.'
-          )
-        )
-
-      }
     }
-
-  })
+  )
 
   observeEvent(input$cookies$username, {
     if (input$cookies$username %in% valid_analysts) {
 
       values$username <- input$cookies$username
+
       USERNAME <- input$username
+
       values$valid_user <- TRUE
 
-      output$show_username = renderText(
-            paste('User:', values$username)
-      )
+      output$show_username <-
+        renderText(paste('User:', values$username))
 
     } else {
 
       values$valid_user <- FALSE
 
-      output$show_username = renderText(
-            paste('No valid user name')
-      )
+      output$show_username <-
+        renderText(paste('No valid user name'))
     }
   })
 
@@ -1365,16 +1461,17 @@ server <- function(input, output, session) {
 
     isolate({
 
-      comtrade_query <- paste0(
-        'https://comtrade.un.org/api/get?max=500&type=C&freq=A&px=HS&ps=all&r=',
-        input$reporter_comtrade,
-        '&p=',
-        input$partner_comtrade,
-        '&rg=',
-        input$flow_comtrade,
-        '&cc=',
-        input$item_comtrade
-      )
+      comtrade_query <-
+        paste0(
+          'https://comtrade.un.org/api/get?max=500&type=C&freq=A&px=HS&ps=all&r=',
+          input$reporter_comtrade,
+          '&p=',
+          input$partner_comtrade,
+          '&rg=',
+          input$flow_comtrade,
+          '&cc=',
+          input$item_comtrade
+        )
 
       res <- jsonlite::fromJSON(comtrade_query)
 
@@ -1383,7 +1480,7 @@ server <- function(input, output, session) {
           filter(period > 2000) %>%
           select(period, rtTitle,  ptTitle, cmdDescE, pfCode, qtDesc, TradeQuantity, NetWeight, TradeValue) %>%
           arrange(period, rtTitle, cmdDescE, ptTitle) %>%
-          mutate(TradeQuantity = formatNum(TradeQuantity/1000), NetWeight = formatNum(NetWeight/1000), TradeValue = formatNum(TradeValue/1000))
+          mutate(TradeQuantity = formatNum(TradeQuantity / 1000), NetWeight = formatNum(NetWeight / 1000), TradeValue = formatNum(TradeValue / 1000))
       } else {
         data.frame(info = 'No data available in comtrade')
       }
@@ -1391,196 +1488,206 @@ server <- function(input, output, session) {
     })
   })
 
-  output$units_measurement <- renderUI({
-    unqty <- unique(datasetInput()$data$qty_unit)
-    unqty <- unqty[!is.na(unqty)]
+  output$units_measurement <-
+    renderUI({
+      unqty <- unique(datasetInput()$data$qty_unit)
+      unqty <- unqty[!is.na(unqty)]
 
-    if (length(unqty) != 0) {
-      unqty <- ifelse(unqty == 't', 'tonnes', unqty)
-      HTML(paste('<p>Values are expressed in 1,000 US dollars, quantities in', unqty, 'and unit values in 1,000 US dollars per tonne.</p>'))
-    }
-  })
+      if (length(unqty) != 0) {
+        unqty <- ifelse(unqty == 't', 'tonnes', unqty)
+        HTML(paste('<p>Values are expressed in 1,000 US dollars, quantities in', unqty, 'and unit values in 1,000 US dollars per tonne.</p>'))
+      }
+    })
 
-  output$selection_title <- renderUI({
-    if (is.na(values$reporter)) {
-      NULL
-    } else {
-      HTML(paste0('<p style="font-size: 1.2em;"><strong>Current selection: reporter = <span id = "selected_reporter" style = "color: blue;">', values$reporter, '</span>, partner = <span id = "selected_partner" style = "color: blue;">', values$partner, '</span>, item = <span id = "selected_item" style = "color: blue;">', values$item, '</span>, flow = <span id = "selected_flow" style = "color: blue;">', ifelse(values$flow == '1', 'import', 'export'), '</span></strong></p>'))
-    }
-  })
+  output$selection_title <-
+    renderUI({
+      if (is.na(values$reporter)) {
+        NULL
+      } else {
+        HTML(paste0('<p style="font-size: 1.2em;"><strong>Current selection: reporter = <span id = "selected_reporter" style = "color: blue;">', values$reporter, '</span>, partner = <span id = "selected_partner" style = "color: blue;">', values$partner, '</span>, item = <span id = "selected_item" style = "color: blue;">', values$item, '</span>, flow = <span id = "selected_flow" style = "color: blue;">', ifelse(values$flow == '1', 'import', 'export'), '</span></strong></p>'))
+      }
+    })
 
-  output$dup_corr <- renderText({
-    if (values$dup_correction) {
-      HTML('
-        <p style="color: red;">The correction cannot be saved. See the
-        "Corrections" section.</p>
-      ')
-    } else {
-      NULL
-    }
-  })
-
-  output$check_flags <- renderUI({
-    if (input$go == 0) {
-      return(NULL)
-    } else {
-      any_match <- datasetInput()$data %>%
-        filter(timePointYears == input$year2correct) %>%
-        select(flag_qty, flag_value) %>%
-        grepl('^[IE]', .) %>%
-        any()
-
-      if (any_match) {
-      HTML('
-        <p style="color: red;"><strong>NOTE: this is either an imputed or mirrored flow. Look at the flags in the table at the end of the page: if it is a mirror flow, please correct the partner\'s data. Take into account that, in theory, even if the flag is "I", it can be a mirrored flow (in this case the flag is "I" bacause the partner\'s data was imputed). In this case, it is strongly advised that you check if the partner\'s quantity is the same.</strong></p>
+  output$dup_corr <-
+    renderText({
+      if (values$dup_correction) {
+        HTML('
+          <p style="color: red;">The correction cannot be saved. See the
+          "Corrections" section.</p>
         ')
       } else {
         NULL
       }
+    })
+
+  output$check_flags <-
+    renderUI({
+      if (input$go == 0) {
+        return(NULL)
+      } else {
+        any_match <-
+          datasetInput()$data %>%
+          filter(timePointYears == input$year2correct) %>%
+          select(flag_qty, flag_value) %>%
+          grepl('^[IE]', .) %>%
+          any()
+
+        if (any_match) {
+        HTML('
+          <p style="color: red;"><strong>NOTE: this is either an imputed or mirrored flow. Look at the flags in the table at the end of the page: if it is a mirror flow, please correct the partner\'s data. Take into account that, in theory, even if the flag is "I", it can be a mirrored flow (in this case the flag is "I" bacause the partner\'s data was imputed). In this case, it is strongly advised that you check if the partner\'s quantity is the same.</strong></p>
+          ')
+        } else {
+          NULL
+        }
+      }
+    })
+
+  output$partner <-
+    renderUI({
+      if (input$dynamic_menu) {
+        xpartners <- unique((values$db %>%
+          select(flow, reporter_name, partner_name,  item_name) %>%
+          distinct() %>%
+          filter(
+            reporter_name == values$reporter
+            ))$partner_name)
+      } else {
+        xpartners <- partners
+      }
+
+      selectInput("partner", "Choose a partner:", xpartners)
+    })
+
+  output$item <-
+    renderUI({
+      if (input$dynamic_menu) {
+        xitems <- unique((values$db %>%
+          select(flow, reporter_name, partner_name, item_name) %>%
+          distinct() %>%
+          filter(
+            reporter_name == values$reporter,
+            partner_name  == values$partner,
+            flow          == values$flow
+            ))$item_name)
+      } else {
+        xitems <- items
+      }
+
+      selectInput("item", "Choose an item:", xitems)
+    })
+
+  observeEvent(
+    input$full_out_table_rows_selected,
+    {
+      xxx             <- filter(values$mydb, out == 1L, !grepl('T', flag_value))
+      idx             <- input$full_out_table_rows_selected
+      values$selected <- input$full_out_table_rows_selected
+      values$reporter <- xxx$reporter_name[idx]
+      values$partner  <- xxx$partner_name[idx]
+      values$item     <- xxx$item_name[idx]
+      values$flow     <- xxx$flow[idx]
     }
-  })
-
-  output$partner <- renderUI({
-    if (input$dynamic_menu) {
-      xpartners <- unique((values$db %>%
-        select(flow, reporter_name, partner_name,  item_name) %>%
-        distinct() %>%
-        filter(
-          reporter_name == values$reporter
-          ))$partner_name)
-    } else {
-      xpartners <- partners
-    }
-
-    selectInput("partner", "Choose a partner:", xpartners)
-  })
-
-  output$item <- renderUI({
-    if (input$dynamic_menu) {
-      xitems <- unique((values$db %>%
-        select(flow, reporter_name, partner_name,  item_name) %>%
-        distinct() %>%
-        filter(
-          reporter_name == values$reporter,
-          partner_name == values$partner,
-          flow == values$flow
-          ))$item_name)
-    } else {
-      xitems <- items
-    }
-
-    selectInput("item", "Choose an item:", xitems)
-  })
-
-    observeEvent(input$full_out_table_rows_selected, {
-                     xxx <- values$mydb %>% filter(out == 1L, !grepl('T', flag_value))
-                     idx <- input$full_out_table_rows_selected
-                     values$selected <- input$full_out_table_rows_selected
-                     values$reporter <- xxx$reporter_name[idx]
-                     values$partner  <- xxx$partner_name[idx]
-                     values$item     <- xxx$item_name[idx]
-                     values$flow     <- xxx$flow[idx]
-                       })
+  )
 
   # http://stackoverflow.com/questions/29803310/r-shiny-build-links-between-tabs-with-dt-package
-  output$full_out_table <- DT::renderDataTable({
-    
+  output$full_out_table <-
+    DT::renderDataTable({
 
-    #if ((input$go == 1 | input$gousername > 0) & values$valid_user) {
-    if (values$valid_user & input$go_db > 0) {
+      #if ((input$go == 1 | input$gousername > 0) & values$valid_user) {
+      if (values$valid_user & input$go_db > 0) {
 
-      #tab_target = ' target="_blank"'
-      tab_target = ''
+        #tab_target = ' target="_blank"'
+        tab_target = ''
 
-      # XXX urlencode
-      values$mydb %>%
-        # Remove mirrored flows. Notice that it happens for the flag_value:
-        # It happens that 'T' in flag_qty is a subset of 'T' in flag_value
-        # (the remaining non-E flag_qty are either 'I-c' or 'E-s')
-        # XXX probably this should be an option?
-        filter(out == 1L, !grepl('T', flag_value)) %>%
-        # XXX Note that this join will take a while if done on the whole table
-        # (especially when the outlier option is set to "All data")
-        left_join(
-          values$corrections %>%
-            select(reporter, partner, year, item, flow) %>%
-            mutate(corrected = TRUE, year = as.character(year)),
-          by = c(
-            'geographicAreaM49Reporter' = 'reporter',
-            'geographicAreaM49Partner' = 'partner',
-            'measuredItemCPC' = 'item',
-            'flow',
-            'timePointYears' = 'year'
-            )
-        ) %>%
-        select(
-          reporter_name,
-          partner_name,
-          item_name,
-          flow,
-          year = timePointYears,
-          qty,
-          `value (1,000$)` = value,
-          weight,
-          unit_value,
-          qty_unit,
-          ma,
-          perc.value,
-          perc.qty,
-          `flag qty` = flag_qty,
-          `flag value` = flag_value,
-          `flag weight` = flag_weight,
-          corrected
-        ) %>%
-        # XXX year, flag_qty, flag_value should be factor in order for the
-        # filtering cell to display options, but the options will be cut
-        # (it seems a DT bug or some missing option)
-        mutate(
-          year       = as.integer(year),
-          unit_value = round(unit_value, 3),
-          ma         = round(ma, 3),
-          flow       = ifelse(flow == 1, 'import', 'export'),
-          corrected  = if_else(corrected, corrected, FALSE, FALSE),
-          qty_unit   = ifelse(qty_unit == 't', 'tonnes', qty_unit)
-        ) %>%
-        DT::datatable(
-          callback =
-            DT::JS(
-              '$("tbody").on("click.dt", "tr", function() {
-                 tabs = $("#main li a");
-                 $(tabs[0]).click();
-                 $("#go").click()
-                 });'
-            ),
-          #### #callback = DT::JS(
-          #### #     'table.on("click.dt", "tr", function() {
-          #### #       tabs = $(".nav.navbar-nav li a");
-          #### #       $(tabs[0]).click();
-          #### #      })'
-          #### #      ),
-          #callback = DT::JS('
-          #  var table_links = document.getElementsByClassName("link-to-plots");
-          #  for (i = 0; i < table_links.length; i++) { 
-          #      text = table_links[i].getAttribute("href") + "xxx";
-          #      table_links[i].setAttribute("href", text);
-          #  };
-          #  '),
-          escape    = -2,
-          options   = list(pageLength = 50, dom = 'ptip', stateSave = TRUE, serverSide = TRUE),
-          filter    = 'top',
-          selection = 'single'
-          #$("#go").click();
-          #$("#partner")[0].textContent = "Colombia";
-          #$("#partner option")[0].value = "Colombia";
-        ) %>%
-        DT::formatCurrency(c('qty', 'value (1,000$)', 'weight'), digits = 0, currency = '') %>%
-        DT::formatCurrency(c('unit_value', 'ma'), digits = 3, currency = '') %>%
-        DT::formatPercentage(c('perc.value', 'perc.qty'), 1)
+        # XXX urlencode
+        values$mydb %>%
+          # Remove mirrored flows. Notice that it happens for the flag_value:
+          # It happens that 'T' in flag_qty is a subset of 'T' in flag_value
+          # (the remaining non-E flag_qty are either 'I-c' or 'E-s')
+          # XXX probably this should be an option?
+          filter(out == 1L, !grepl('T', flag_value)) %>%
+          # XXX Note that this join will take a while if done on the whole table
+          # (especially when the outlier option is set to "All data")
+          left_join(
+            values$corrections %>%
+              select(reporter, partner, year, item, flow) %>%
+              mutate(corrected = TRUE, year = as.character(year)),
+            by = c(
+              'geographicAreaM49Reporter' = 'reporter',
+              'geographicAreaM49Partner' = 'partner',
+              'measuredItemCPC' = 'item',
+              'flow',
+              'timePointYears' = 'year'
+              )
+          ) %>%
+          select(
+            reporter_name,
+            partner_name,
+            item_name,
+            flow,
+            year = timePointYears,
+            qty,
+            `value (1,000$)` = value,
+            weight,
+            unit_value,
+            qty_unit,
+            ma,
+            perc.value,
+            perc.qty,
+            `flag qty` = flag_qty,
+            `flag value` = flag_value,
+            `flag weight` = flag_weight,
+            corrected
+          ) %>%
+          # XXX year, flag_qty, flag_value should be factor in order for the
+          # filtering cell to display options, but the options will be cut
+          # (it seems a DT bug or some missing option)
+          mutate(
+            year       = as.integer(year),
+            unit_value = round(unit_value, 3),
+            ma         = round(ma, 3),
+            flow       = ifelse(flow == 1, 'import', 'export'),
+            corrected  = if_else(corrected, corrected, FALSE, FALSE),
+            qty_unit   = ifelse(qty_unit == 't', 'tonnes', qty_unit)
+          ) %>%
+          DT::datatable(
+            callback =
+              DT::JS(
+                '$("tbody").on("click.dt", "tr", function() {
+                   tabs = $("#main li a");
+                   $(tabs[0]).click();
+                   $("#go").click()
+                   });'
+              ),
+            #### #callback = DT::JS(
+            #### #     'table.on("click.dt", "tr", function() {
+            #### #       tabs = $(".nav.navbar-nav li a");
+            #### #       $(tabs[0]).click();
+            #### #      })'
+            #### #      ),
+            #callback = DT::JS('
+            #  var table_links = document.getElementsByClassName("link-to-plots");
+            #  for (i = 0; i < table_links.length; i++) { 
+            #      text = table_links[i].getAttribute("href") + "xxx";
+            #      table_links[i].setAttribute("href", text);
+            #  };
+            #  '),
+            escape    = -2,
+            options   = list(pageLength = 50, dom = 'ptip', stateSave = TRUE, serverSide = TRUE),
+            filter    = 'top',
+            selection = 'single'
+            #$("#go").click();
+            #$("#partner")[0].textContent = "Colombia";
+            #$("#partner option")[0].value = "Colombia";
+          ) %>%
+          DT::formatCurrency(c('qty', 'value (1,000$)', 'weight'), digits = 0, currency = '') %>%
+          DT::formatCurrency(c('unit_value', 'ma'), digits = 3, currency = '') %>%
+          DT::formatPercentage(c('perc.value', 'perc.qty'), 1)
 
-    } else {
-      DT::datatable(data.frame(info = 'You cannot access this feature: please, indicate your user name and choose reporter/item.'))
-    }
-  })
+      } else {
+        DT::datatable(data.frame(info = 'You cannot access this feature: please, indicate your user name and choose reporter/item.'))
+      }
+    })
 
   output$unapplied_corrections_table <-
     DT::renderDataTable({
@@ -1607,144 +1714,162 @@ server <- function(input, output, session) {
       }
     })
 
-  output$corrections_table <- DT::renderDataTable(
-    #if ((input$go == 1 | input$gousername > 0) & values$valid_user) {
-    if (values$valid_user) {
-      DT::datatable(values$corrections, selection = 'single', options = list(pageLength = 50, dom = 'ptip', stateSave = TRUE, serverSide = TRUE), filter = 'top')
-    } else {
-      DT::datatable(data.frame(info = 'You cannot access this feature: please, indicate your user name and choose reporter/item.'))
+  output$corrections_table <-
+    DT::renderDataTable({
+      #if ((input$go == 1 | input$gousername > 0) & values$valid_user) {
+      if (values$valid_user) {
+        DT::datatable(values$corrections, selection = 'single', options = list(pageLength = 50, dom = 'ptip', stateSave = TRUE, serverSide = TRUE), filter = 'top')
+      } else {
+        DT::datatable(data.frame(info = 'You cannot access this feature: please, indicate your user name and choose reporter/item.'))
+      }
+    })
+
+  observeEvent(
+    input$delete_correction,
+    {
+      showModal(
+        modalDialog(
+          title = "Confirm correction",
+            "By clicking OK you confirm that the selected correction should
+            be REMOVED. Please note that if deleted by mistake, it should be
+            added again manually.",
+          footer = tagList(
+            modalButton("Cancel"),
+            actionButton("okDeleteCorrection", "OK")
+          )
+        )
+      )
     }
   )
 
-  observeEvent(input$delete_correction, {
-    showModal(
-      modalDialog(
-        title = "Confirm correction",
-          "By clicking OK you confirm that the selected correction should
-          be REMOVED. Please note that if deleted by mistake, it should be
-          added again manually.",
-        footer = tagList(
-          modalButton("Cancel"),
-          actionButton("okDeleteCorrection", "OK")
+  observeEvent(
+    input$okDeleteCorrection,
+    {
+      if (!is.null(input$corrections_table_rows_selected)) {
+
+        to_remove <- values$corrections[as.numeric(input$corrections_table_rows_selected),]
+
+        values$corrections <- values$corrections[-as.numeric(input$corrections_table_rows_selected),]
+
+        values$corrections <- combine_corrections(
+          working = values$corrections,
+          file    = values$corrections_file,
+          remove  = to_remove
         )
-      )
-    )
-  })
 
-  observeEvent(input$okDeleteCorrection, {
-    if (!is.null(input$corrections_table_rows_selected)) {
+        output$corrections_message <- renderText('The correction has been deleted. You can now save a new correction.')
+      }
 
-      to_remove <- values$corrections[as.numeric(input$corrections_table_rows_selected),]
-
-      values$corrections <- values$corrections[-as.numeric(input$corrections_table_rows_selected),]
-
-      values$corrections <- combine_corrections(
-        working = values$corrections,
-        file    = values$corrections_file,
-        remove  = to_remove
-      )
-
-      output$corrections_message <- renderText('The correction has been deleted. You can now save a new correction.')
+      removeModal()
     }
+  )
 
-    removeModal()
-  })
-
-  observeEvent(input$sync_corrections_table, {
-    showModal(
-      modalDialog(
-        title = "Synchronise the table",
-          "If you click OK, this table will be written to the file and it will
-          be loaded again. Please do it sparingly, as another user could be
-          doing the synchronisation in the same moment.",
-        footer = tagList(
-          modalButton("Cancel"),
-          actionButton("okSyncCorrections", "OK")
+  observeEvent(
+    input$sync_corrections_table,
+    {
+      showModal(
+        modalDialog(
+          title = "Synchronise the table",
+            "If you click OK, this table will be written to the file and it will
+            be loaded again. Please do it sparingly, as another user could be
+            doing the synchronisation in the same moment.",
+          footer = tagList(
+            modalButton("Cancel"),
+            actionButton("okSyncCorrections", "OK")
+          )
         )
       )
-    )
-  })
+    }
+  )
 
-  observeEvent(input$okSyncCorrections, {
+  observeEvent(
+    input$okSyncCorrections,
+    {
+      removeModal()
 
-    removeModal()
+      # XXX The file.lock is removed (and the corrections file is saved
+      # without checking lock) because now the corrections file is reporter
+      # specific (instead of a one-file-for-all), and only one person is
+      # supposed to work on corrections. In any case a lock mechanism can
+      # be useful, but it is left to future requirements.
+      #if (file.exists(lock_name)) {
+      #  showModal(
+      #    modalDialog(
+      #      title = "Please wait",
+      #        "The file is being written by another user. Please try to synchronise in a while."
+      #      )
+      #    )
+      #} else {
+      #  writeBin(1, lock_name)
+      #  saveRDS(values$corrections, file = values$corrections_file)
+      #  unlink(lock_name)
+      #}
+      saveRDS(values$corrections, file = values$corrections_file)
 
-    # XXX The file.lock is removed (and the corrections file is saved
-    # without checking lock) because now the corrections file is reporter
-    # specific (instead of a one-file-for-all), and only one person is
-    # supposed to work on corrections. In any case a lock mechanism can
-    # be useful, but it is left to future requirements.
-    #if (file.exists(lock_name)) {
-    #  showModal(
-    #    modalDialog(
-    #      title = "Please wait",
-    #        "The file is being written by another user. Please try to synchronise in a while."
-    #      )
-    #    )
-    #} else {
-    #  writeBin(1, lock_name)
-    #  saveRDS(values$corrections, file = values$corrections_file)
-    #  unlink(lock_name)
-    #}
-    saveRDS(values$corrections, file = values$corrections_file)
+      # Read table, write table, load table.
 
-    # Read table, write table, load table.
-
-  })
+    }
+  )
 
 
-  observeEvent(input$confirm_correction, {
-    if (input$cookies$username == '') {
-        showModal(
-          modalDialog(
-            title = "Missing user name",
-            "Your user name is required."
-          )
-        )
-    } else {
-      if (input$choose_correction == 'Expert knowledge' & input$note_by_expert == '') {
-        showModal(
-          modalDialog(
-            title = "Missing comment",
-            "A comment/note is required."
-          )
-        )
-      } else {
-        add_message <-
-          ifelse(
-            input$multiplecorrections,
-            'You are applying multiple corrections, so it will take a while.
-            As soon as the corrections are applied, this dialog will be closed.',
-            ''
-          )
-
-        showModal(
-          modalDialog(
-            title = "Confirm correction",
-              p("By clicking OK you confirm that the correction should be
-              applied and it will be saved."), p(add_message),
-            footer = tagList(
-              modalButton("Cancel"),
-              actionButton("okCorrection", "OK")
+  observeEvent(
+    input$confirm_correction,
+    {
+      if (input$cookies$username == '') {
+          showModal(
+            modalDialog(
+              title = "Missing user name",
+              "Your user name is required."
             )
           )
-        )
+      } else {
+        if (input$choose_correction == 'Expert knowledge' & input$note_by_expert == '') {
+          showModal(
+            modalDialog(
+              title = "Missing comment",
+              "A comment/note is required."
+            )
+          )
+        } else {
+          add_message <-
+            ifelse(
+              input$multiplecorrections,
+              'You are applying multiple corrections, so it will take a while.
+              As soon as the corrections are applied, this dialog will be closed.',
+              ''
+            )
+
+          showModal(
+            modalDialog(
+              title = "Confirm correction",
+                p("By clicking OK you confirm that the correction should be
+                applied and it will be saved."), p(add_message),
+              footer = tagList(
+                modalButton("Cancel"),
+                actionButton("okCorrection", "OK")
+              )
+            )
+          )
+        }
       }
     }
-  })
+  )
 
-  observeEvent(input$downloadHS, {
-    showModal(
-      modalDialog(
-        title = "Confirm data query",
-        "By clicking OK a query will be sent: it could require some time.",
-        footer = tagList(
-          modalButton("Cancel"),
-          downloadButton("okHSdata", "OK")
+  observeEvent(
+    input$downloadHS,
+    {
+      showModal(
+        modalDialog(
+          title = "Confirm data query",
+          "By clicking OK a query will be sent: it could require some time.",
+          footer = tagList(
+            modalButton("Cancel"),
+            downloadButton("okHSdata", "OK")
+          )
         )
       )
-    )
-  })
+    }
+  )
 
   #observeEvent(input$okHSdata, removeModal())
 
@@ -1753,7 +1878,8 @@ server <- function(input, output, session) {
   #output$test_uv    <- renderTable(values$imputed_uv)
   #output$test_all   <- renderTable(bind_rows(values$imputed_value, values$imputed_qty))
 
-  output$debug <- renderUI({
+  output$debug <-
+    renderUI({
       comtrade_query <- paste0(
         'https://comtrade.un.org/api/get?max=500&type=C&freq=A&px=HS&ps=all&r=',
         input$reporter_comtrade,
@@ -1765,86 +1891,86 @@ server <- function(input, output, session) {
         input$item_comtrade
       )
 
-    HTML(paste("Used for debugging:",
-      '<br>',
-      'USERNAME =',
-      USERNAME,
-      '<br>',
-      'values$username =',
-      values$username,
-      '<br>',
-      'Valid analyst =',
-      values$username %in% valid_analysts,
-      '<br>',
-      'values$valid_user =',
-      values$valid_user,
-      '<br>',
-      'input$gousername =',
-      input$gousername,
-      '<br>',
-      'input$partner =',
-      input$partner,
-      '<br>',
-      'input$item =',
-      input$item,
-      '<br>',
-      'input$flow =',
-      input$flow,
-      '<br>',
-      'values$reporter =',
-      values$reporter,
-      '<br>',
-      'values$partner =',
-      values$partner,
-      '<br>',
-      'values$item =',
-      values$item,
-      '<br>',
-      'values$flow =',
-      values$flow,
-      '<br>',
-      'input$reporter_start =',
-      input$reporter_start,
-      '<br>',
-      'input$item_start =',
-      input$item_start,
-      '<br>',
-      'input$go =',
-      input$go,
-      '<br>',
-      'input$go_db =',
-      input$go_db,
-      '<br>',
-      'nrow(values$mydb) =',
-      nrow(values$mydb),
-      '<br>',
-      'is.null(values$mydb) =',
-      is.null(values$mydb),
-      '<br>',
-      'nrow(values$corrections) =',
-      nrow(values$corrections),
-      '<br>',
-      'input$cookies$username =',
-      input$cookies$username,
-      '<br>',
-      'input$year2correct =',
-      input$year2correct,
-      '<br>',
-      'input$multiplecorrections =',
-      input$multiplecorrections,
-      '<br>',
-      'values$xxx =',
-      values$xxx,
-      '<br>',
-      'values$selected =',
-      values$selected,
-      '<br>',
-      'input$a_state =',
-      str(input$full_out_table_state),
-      '<br>',
-      'comtrade query =',
-      paste0('<a href="', comtrade_query, '">', comtrade_query, '</a>')))
-  })
+      HTML(paste("Used for debugging:",
+        '<br>',
+        'USERNAME =',
+        USERNAME,
+        '<br>',
+        'values$username =',
+        values$username,
+        '<br>',
+        'Valid analyst =',
+        values$username %in% valid_analysts,
+        '<br>',
+        'values$valid_user =',
+        values$valid_user,
+        '<br>',
+        'input$gousername =',
+        input$gousername,
+        '<br>',
+        'input$partner =',
+        input$partner,
+        '<br>',
+        'input$item =',
+        input$item,
+        '<br>',
+        'input$flow =',
+        input$flow,
+        '<br>',
+        'values$reporter =',
+        values$reporter,
+        '<br>',
+        'values$partner =',
+        values$partner,
+        '<br>',
+        'values$item =',
+        values$item,
+        '<br>',
+        'values$flow =',
+        values$flow,
+        '<br>',
+        'input$reporter_start =',
+        input$reporter_start,
+        '<br>',
+        'input$item_start =',
+        input$item_start,
+        '<br>',
+        'input$go =',
+        input$go,
+        '<br>',
+        'input$go_db =',
+        input$go_db,
+        '<br>',
+        'nrow(values$mydb) =',
+        nrow(values$mydb),
+        '<br>',
+        'is.null(values$mydb) =',
+        is.null(values$mydb),
+        '<br>',
+        'nrow(values$corrections) =',
+        nrow(values$corrections),
+        '<br>',
+        'input$cookies$username =',
+        input$cookies$username,
+        '<br>',
+        'input$year2correct =',
+        input$year2correct,
+        '<br>',
+        'input$multiplecorrections =',
+        input$multiplecorrections,
+        '<br>',
+        'values$xxx =',
+        values$xxx,
+        '<br>',
+        'values$selected =',
+        values$selected,
+        '<br>',
+        'input$a_state =',
+        str(input$full_out_table_state),
+        '<br>',
+        'comtrade query =',
+        paste0('<a href="', comtrade_query, '">', comtrade_query, '</a>')))
+    })
 
   #observeEvent(input$okCorrection, {
   #            removeModal()
@@ -2018,122 +2144,125 @@ server <- function(input, output, session) {
   #  removeModal()
   #})
 
-   datasetInput <- reactive({
-     if (input$go == 0) {
-       return(NULL)
-     }
-
-     isolate(
-       choose_data(
-         data      = values$db,
-         .flow     = values$flow,
-         .reporter = values$reporter,
-         .partner  = values$partner,
-         .item     = values$item
-       )
-     )
-   })
-
-   output$suggestexpert <- renderText({
-
-     print('Quantity will be corrected with the number set in the field.')
-
-   })
-
-   output$suggestoutlier <- renderUI({
-     s <- datasetInput()
-
-     tmp <- data_frame(
-       type  = c('Median partners', 'Median World', 'Moving average'),
-       value = unlist(
-                 sapply(s[c('median_uv', 'median_uv_world', 'movav_unit_value')],
-                 function(x) x[x$timePointYears == input$year2correct, -1]))
-               )
-
-     div(
-       p(tmp[1,1], strong(round(tmp[1,2], 4))),
-       p(tmp[2,1], strong(round(tmp[2,2], 4))),
-       p(tmp[3,1], strong(round(tmp[3,2], 4)))
-     )
-   })
-
-   output$suggestmirror <- renderUI({
-     tmp <- (datasetInput()$data %>%
-       filter(timePointYears == input$year2correct))[['qty_mirror']]
-
-     if (is.na(tmp)) {
-       p('No mirror quantity available.')
-     } else {
-       p('The mirror quantity that will be used for the correction is',
-         strong(tmp))
-     }
-   })
-
-   output$misc_graph <- highcharter::renderHighchart({
-     if (input$gomisc == 0) {
-       return(NULL)
-     }
-
-     isolate({
-       if (input$choose_misc_graph == 'Heatmap') {
-
-        #isolate(
-         values$db %>%
-           group_by(reporter_name, timePointYears) %>%
-           summarise(perc = sum(out)/sum(!is.na(qty))) %>%
-           highcharter::hchart("heatmap", highcharter::hcaes(x = timePointYears, y = reporter_name, value = perc))
-        #        )
-       } else if (input$choose_misc_graph == 'Treemap') {
-        # isolate({
-         tmp <- values$db %>%
-           mutate(outval = value * out) %>%
-           group_by(reporter_name, timePointYears) %>%
-           summarise(totvalue = sum(outval, na.rm=TRUE)/sum(value, na.rm=TRUE), perc = sum(out)/sum(!is.na(qty)))
-
-         pdf(file = NULL) # HT Sebastian
-         tm <- treemap::treemap(tmp, index = c('reporter_name', 'timePointYears'), vSize = "totvalue", vColor = "perc", draw = FALSE)
-         dev.off()
-
-         tm %>%
-           highcharter::hctreemap(allowDrillToNode = TRUE, layoutAlgorithm = "squarified", dataLabels = 'XXX') %>%
-           highcharter::hc_tooltip(pointFormat = "<b>{point.name}</b>")
-
-        # })
-       } else {
+   datasetInput <-
+     reactive({
+       if (input$go == 0) {
          return(NULL)
+       }
+
+       isolate(
+         choose_data(
+           data      = values$db,
+           .flow     = values$flow,
+           .reporter = values$reporter,
+           .partner  = values$partner,
+           .item     = values$item
+         )
+       )
+     })
+
+   output$suggestexpert <-
+     renderText({
+       print('Quantity will be corrected with the number set in the field.')
+     })
+
+   output$suggestoutlier <-
+     renderUI({
+       s <- datasetInput()
+
+       tmp <-
+         data_frame(
+           type  = c('Median partners', 'Median World', 'Moving average'),
+           value = unlist(sapply(s[c('median_uv', 'median_uv_world', 'movav_unit_value')],
+                     function(x) x[x$timePointYears == input$year2correct, -1]))
+         )
+
+       div(
+         p(tmp[1,1], strong(round(tmp[1,2], 4))),
+         p(tmp[2,1], strong(round(tmp[2,2], 4))),
+         p(tmp[3,1], strong(round(tmp[3,2], 4)))
+       )
+     })
+
+   output$suggestmirror <-
+     renderUI({
+       tmp <- (datasetInput()$data %>%
+         filter(timePointYears == input$year2correct))[['qty_mirror']]
+
+       if (is.na(tmp)) {
+         p('No mirror quantity available.')
+       } else {
+         p('The mirror quantity that will be used for the correction is',
+           strong(tmp))
        }
      })
 
-     if (input$choose_misc_graph == 'Heatmap') {
-      isolate(
-        values$db %>%
-          group_by(reporter_name, timePointYears) %>%
-          summarise(perc = sum(out)/sum(!is.na(qty))) %>%
-          highcharter::hchart("heatmap", highcharter::hcaes(x = timePointYears, y = reporter_name, value = perc))
-      )
-     } else if (input$choose_misc_graph == 'Treemap') {
+   output$misc_graph <-
+     highcharter::renderHighchart({
+       if (input$gomisc == 0) {
+         return(NULL)
+       }
+
        isolate({
-         values$db %>%
-           mutate(outval = value * out) %>%
-           group_by(reporter_name, timePointYears) %>%
-           summarise(
-             totvalue = sum(outval, na.rm=TRUE) / sum(value, na.rm=TRUE),
-             perc = sum(out) / sum(!is.na(qty))
-           ) %>%
-           treemap::treemap(
-             index = c('reporter_name', 'timePointYears'),
-             vSize = "totvalue",
-             vColor = "perc",
-             draw = FALSE
-           ) %>%
-           highcharter::hctreemap(
-             allowDrillToNode = TRUE,
-             layoutAlgorithm = "squarified"
-           )
+         if (input$choose_misc_graph == 'Heatmap') {
+
+          #isolate(
+           values$db %>%
+             group_by(reporter_name, timePointYears) %>%
+             summarise(perc = sum(out)/sum(!is.na(qty))) %>%
+             highcharter::hchart("heatmap", highcharter::hcaes(x = timePointYears, y = reporter_name, value = perc))
+          #        )
+         } else if (input$choose_misc_graph == 'Treemap') {
+          # isolate({
+           tmp <- values$db %>%
+             mutate(outval = value * out) %>%
+             group_by(reporter_name, timePointYears) %>%
+             summarise(totvalue = sum(outval, na.rm=TRUE)/sum(value, na.rm=TRUE), perc = sum(out)/sum(!is.na(qty)))
+
+           pdf(file = NULL) # HT Sebastian
+           tm <- treemap::treemap(tmp, index = c('reporter_name', 'timePointYears'), vSize = "totvalue", vColor = "perc", draw = FALSE)
+           dev.off()
+
+           tm %>%
+             highcharter::hctreemap(allowDrillToNode = TRUE, layoutAlgorithm = "squarified", dataLabels = 'XXX') %>%
+             highcharter::hc_tooltip(pointFormat = "<b>{point.name}</b>")
+
+          # })
+         } else {
+           return(NULL)
+         }
        })
-     } else {
-       return(NULL)
-     }
+
+       if (input$choose_misc_graph == 'Heatmap') {
+         isolate(
+           values$db %>%
+             group_by(reporter_name, timePointYears) %>%
+             summarise(perc = sum(out)/sum(!is.na(qty))) %>%
+             highcharter::hchart("heatmap", highcharter::hcaes(x = timePointYears, y = reporter_name, value = perc))
+         )
+       } else if (input$choose_misc_graph == 'Treemap') {
+         isolate({
+           values$db %>%
+             mutate(outval = value * out) %>%
+             group_by(reporter_name, timePointYears) %>%
+             summarise(
+               totvalue = sum(outval, na.rm=TRUE) / sum(value, na.rm=TRUE),
+               perc = sum(out) / sum(!is.na(qty))
+             ) %>%
+             treemap::treemap(
+               index = c('reporter_name', 'timePointYears'),
+               vSize = "totvalue",
+               vColor = "perc",
+               draw = FALSE
+             ) %>%
+             highcharter::hctreemap(
+               allowDrillToNode = TRUE,
+               layoutAlgorithm = "squarified"
+             )
+         })
+       } else {
+         return(NULL)
+       }
    })
 
    ## output$mapping <- DT::renderDataTable({
@@ -2307,121 +2436,127 @@ server <- function(input, output, session) {
   ##   }
   ## )
 
-   output$xstats <- DT::renderDataTable({
-     input$xgo
+   output$xstats <-
+     DT::renderDataTable({
+       input$xgo
 
-     isolate({
-       #if ((input$go == 1 | input$gousername > 0) & values$valid_user) {
-       if (values$valid_user & input$go_db > 0) {
-         if (input$bygroup == 'reporter') {
-           dbx <- values$mydb %>%
-             group_by(reporter_name)
-         } else if (input$bygroup == 'item') {
-           dbx <- values$mydb %>%
-             group_by(item_name)
-         } else { # 'reporter and item'
-           dbx <- values$mydb %>%
-             group_by(reporter_name, item_name)
+       isolate({
+         #if ((input$go == 1 | input$gousername > 0) & values$valid_user) {
+         if (values$valid_user & input$go_db > 0) {
+           if (input$bygroup == 'reporter') {
+             dbx <- values$mydb %>%
+               group_by(reporter_name)
+           } else if (input$bygroup == 'item') {
+             dbx <- values$mydb %>%
+               group_by(item_name)
+           } else { # 'reporter and item'
+             dbx <- values$mydb %>%
+               group_by(reporter_name, item_name)
+           }
+
+           dbx %>%
+             summarise(
+               n.out = sum(out),
+               n.tot = sum(!is.na(unit_value)),
+               perc.out = n.out / n.tot,
+               perc.value = sum(value * out, na.rm = TRUE) / sum(value, na.rm = TRUE)
+             ) %>%
+             arrange(desc(perc.out)) %>%
+             DT::datatable() %>%
+             DT::formatCurrency(c('n.out', 'n.tot'), digits = 0, currency = '') %>%
+             DT::formatPercentage(c('perc.out', 'perc.value'), 1)
+         } else {
+           DT::datatable(data.frame(info = 'You cannot access this feature: please, indicate your user name and choose reporter/item.'))
          }
-
-         dbx %>%
-           summarise(
-             n.out = sum(out),
-             n.tot = sum(!is.na(unit_value)),
-             perc.out = n.out / n.tot,
-             perc.value = sum(value * out, na.rm = TRUE)/sum(value, na.rm = TRUE)
-           ) %>%
-           arrange(desc(perc.out)) %>%
-           DT::datatable() %>%
-           DT::formatCurrency(c('n.out', 'n.tot'), digits = 0, currency = '') %>%
-           DT::formatPercentage(c('perc.out', 'perc.value'), 1)
-       } else {
-         DT::datatable(data.frame(info = 'You cannot access this feature: please, indicate your user name and choose reporter/item.'))
-       }
-     })
-
+       })
    })
 
-   output$datasnapshot_reporter <- renderTable({
-     if (input$go == 0) {
-       return(NULL)
-     }
-
-     isolate({
-       res <-
-         datasetInput()$data %>%
-         select(
-           year = timePointYears,
-           qty,
-           value,
-           weight,
-           flag_qty,
-           flag_value,
-           flag_weight,
-           unit_value,
-           qty_unit,
-           median,
-           median_world,
-           movav_unit_value
-         ) %>%
-         mutate(
-           qty              = formatNum(qty),
-           value            = formatNum(value),
-           unit_value       = formatNum(unit_value),
-           median           = formatNum(median),
-           median_world     = formatNum(median_world),
-           movav_unit_value = formatNum(movav_unit_value),
-           qty_unit         = ifelse(qty_unit == 't', 'tonnes', qty_unit)
-         ) %>%
-         rename(`value (1,000$)` = value)
-
-       if (nrow(filter(res, !is.na(weight))) == 0) {
-         res <- select(res, -weight, -flag_weight)
+   output$datasnapshot_reporter <-
+     renderTable({
+       if (input$go == 0) {
+         return(NULL)
        }
 
-       res
-
-     })
-
-   }, align = 'r')
-
-   output$datasnapshot_partner <- renderTable({
-     if (input$go == 0) {
-       return(NULL)
-     }
-
-     isolate({
-       res <-
-         datasetInput()$data %>%
+       isolate({
+         res <-
+           datasetInput()$data %>%
            select(
-             year       = timePointYears,
-             qty        = qty_mirror,
-             value      = value_mirror,
-             weight     = weight_mirror,
-             flag_qty   = flag_qty_mirror,
-             flag_value = flag_value_mirror,
-             unit_value = unit_value_mirror,
-             qty_unit
+             year = timePointYears,
+             qty,
+             value,
+             weight,
+             flag_qty,
+             flag_value,
+             flag_weight,
+             unit_value,
+             qty_unit,
+             median,
+             median_world,
+             movav_unit_value
            ) %>%
            mutate(
-             qty        = formatNum(qty),
-             value      = formatNum(value),
-             weight     = formatNum(weight),
-             unit_value = formatNum(unit_value),
-             qty_unit   = ifelse(qty_unit == 't', 'tonnes', qty_unit)
+             qty              = formatNum(qty),
+             value            = formatNum(value),
+             unit_value       = formatNum(unit_value),
+             median           = formatNum(median),
+             median_world     = formatNum(median_world),
+             movav_unit_value = formatNum(movav_unit_value),
+             qty_unit         = ifelse(qty_unit == 't', 'tonnes', qty_unit)
            ) %>%
            rename(`value (1,000$)` = value)
+
+         if (nrow(filter(res, !is.na(weight))) == 0) {
+           res <- select(res, -weight, -flag_weight)
+         }
+
+         res
+
+       })
+     },
+     align = 'r'
+   )
+
+   output$datasnapshot_partner <-
+     renderTable({
+       if (input$go == 0) {
+         return(NULL)
+       }
+
+       isolate({
+         res <-
+           datasetInput()$data %>%
+             select(
+               year       = timePointYears,
+               qty        = qty_mirror,
+               value      = value_mirror,
+               weight     = weight_mirror,
+               flag_qty   = flag_qty_mirror,
+               flag_value = flag_value_mirror,
+               unit_value = unit_value_mirror,
+               qty_unit
+             ) %>%
+             mutate(
+               qty        = formatNum(qty),
+               value      = formatNum(value),
+               weight     = formatNum(weight),
+               unit_value = formatNum(unit_value),
+               qty_unit   = ifelse(qty_unit == 't', 'tonnes', qty_unit)
+             ) %>%
+             rename(`value (1,000$)` = value)
+       })
+
+     },
+     align = 'r'
+   )
+
+   output$myflags <-
+     renderTable({
+       if (input$go == 0) {
+         return(NULL)
+       }
+
+       flags
      })
-
-   }, align = 'r')
-
-   output$myflags <- renderTable({
-     if (input$go == 0) {
-       return(NULL)
-     }
-
-     flags
-   })
 
    #output$hsdrilldown <- renderTable({
    #  if (input$gohs == 0) {
@@ -2440,140 +2575,142 @@ server <- function(input, output, session) {
 
    #})
 
-   output$partners <- renderText({
-     if (input$go == 0) {
-       return(NULL)
-     }
+   output$partners <-
+     renderText({
+       if (input$go == 0) {
+         return(NULL)
+       }
 
-     isolate(
-       print(paste('Number of different partners on the whole sample: ', datasetInput()$n))
-     )
-
-   })
-
-   output$summary <- renderPlot({
-     if (input$go == 0) {
-       return(NULL)
-     }
-
-     isolate({
-       datasetInput()$info %>%
-         ggplot(aes(x = timePointYears, y = n)) +
-           geom_bar(stat = 'identity') +
-           #scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
-           labs(title = 'Number of partners by year (reporter and commodity specific)')
+       isolate(
+         print(paste('Number of different partners on the whole sample: ', datasetInput()$n))
+       )
      })
-   })
+
+   output$summary <-
+     renderPlot({
+       if (input$go == 0) {
+         return(NULL)
+       }
+
+       isolate({
+         datasetInput()$info %>%
+           ggplot(aes(x = timePointYears, y = n)) +
+             geom_bar(stat = 'identity') +
+             #scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
+             labs(title = 'Number of partners by year (reporter and commodity specific)')
+       })
+     })
 
    output$test_s <- renderTable(values$test_s)
 
-   output$plotUV_coords <- renderUI({
-     if (is.null(input$plotUV_hover$y)) {
-       NULL
-     } else {
-       ######################################################
-       ## Credit: The code in this else clause comes from: ##
-       ##         https://gitlab.com/snippets/16220        ##
-       ######################################################
+   output$plotUV_coords <-
+     renderUI({
+       if (is.null(input$plotUV_hover$y)) {
+         NULL
+       } else {
+         ######################################################
+         ## Credit: The code in this else clause comes from: ##
+         ##         https://gitlab.com/snippets/16220        ##
+         ######################################################
 
-       hover <- input$plotUV_hover
+         hover <- input$plotUV_hover
 
-       # calculate point position INSIDE the image as percent of total
-       # dimensions from left (horizontal) and from top (vertical)
-       left_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
-       top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
+         # calculate point position INSIDE the image as percent of total
+         # dimensions from left (horizontal) and from top (vertical)
+         left_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
+         top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
 
-       # calculate distance from left and bottom side of the picture in pixels
-       left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
-       top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
+         # calculate distance from left and bottom side of the picture in pixels
+         left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
+         top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
 
-       # create style property fot tooltip
-       # background color is set so tooltip is a bit transparent
-       # z-index is set so we are sure are tooltip will be on top
-       style <- paste0("position:absolute; z-index:100; background-color: rgba(245, 245, 245, 0.85); ",
-         "left:", left_px + 2, "px; top:", top_px + 2, "px;")
+         # create style property fot tooltip
+         # background color is set so tooltip is a bit transparent
+         # z-index is set so we are sure are tooltip will be on top
+         style <- paste0("position:absolute; z-index:100; background-color: rgba(245, 245, 245, 0.85); ",
+           "left:", left_px + 2, "px; top:", top_px + 2, "px;")
 
-       # actual tooltip created as wellPanel
-       wellPanel(
-         style = style,
-         p(HTML(paste0('Y:', input$plotUV_hover$y)))
-       )
-     }
-
-   })
+         # actual tooltip created as wellPanel
+         wellPanel(
+           style = style,
+           p(HTML(paste0('Y:', input$plotUV_hover$y)))
+         )
+       }
+     })
 
    # Note: top_px is increased by 400 as this is the third graph
    # (plotOutput width = 400px by default)
-   output$plotQuantity_coords <- renderUI({
-     if (is.null(input$plotQuantity_hover$y)) {
-       NULL
-     } else {
-       ######################################################
-       ## Credit: The code in this else clause comes from: ##
-       ##         https://gitlab.com/snippets/16220        ##
-       ######################################################
+   output$plotQuantity_coords <-
+     renderUI({
+       if (is.null(input$plotQuantity_hover$y)) {
+         NULL
+       } else {
+         ######################################################
+         ## Credit: The code in this else clause comes from: ##
+         ##         https://gitlab.com/snippets/16220        ##
+         ######################################################
 
-       hover <- input$plotQuantity_hover
+         hover <- input$plotQuantity_hover
 
-       # calculate point position INSIDE the image as percent of total
-       # dimensions from left (horizontal) and from top (vertical)
-       left_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
-       top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
+         # calculate point position INSIDE the image as percent of total
+         # dimensions from left (horizontal) and from top (vertical)
+         left_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
+         top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
 
-       # calculate distance from left and bottom side of the picture in pixels
-       left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
-       top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
+         # calculate distance from left and bottom side of the picture in pixels
+         left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
+         top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
 
-       # create style property fot tooltip
-       # background color is set so tooltip is a bit transparent
-       # z-index is set so we are sure are tooltip will be on top
-       style <- paste0("position:absolute; z-index:100; background-color: rgba(245, 245, 245, 0.85); ",
-         "left:", left_px + 2, "px; top:", top_px + 2 + 400, "px;")
+         # create style property fot tooltip
+         # background color is set so tooltip is a bit transparent
+         # z-index is set so we are sure are tooltip will be on top
+         style <- paste0("position:absolute; z-index:100; background-color: rgba(245, 245, 245, 0.85); ",
+           "left:", left_px + 2, "px; top:", top_px + 2 + 400, "px;")
 
-       # actual tooltip created as wellPanel
-       wellPanel(
-         style = style,
-         p(HTML(paste0('Y:', input$plotQuantity_hover$y)))
-       )
-     }
-   })
+         # actual tooltip created as wellPanel
+         wellPanel(
+           style = style,
+           p(HTML(paste0('Y:', input$plotQuantity_hover$y)))
+         )
+       }
+     })
 
    # Note: top_px is increased by 800 as this is the third graph
    # (plotOutput width = 400px by default)
-   output$plotValue_coords <- renderUI({
-     if (is.null(input$plotValue_hover$y)) {
-       NULL
-     } else {
-       ######################################################
-       ## Credit: The code in this else clause comes from: ##
-       ##         https://gitlab.com/snippets/16220        ##
-       ######################################################
+   output$plotValue_coords <-
+     renderUI({
+       if (is.null(input$plotValue_hover$y)) {
+         NULL
+       } else {
+         ######################################################
+         ## Credit: The code in this else clause comes from: ##
+         ##         https://gitlab.com/snippets/16220        ##
+         ######################################################
 
-       hover <- input$plotValue_hover
+         hover <- input$plotValue_hover
 
-       # calculate point position INSIDE the image as percent of total
-       # dimensions from left (horizontal) and from top (vertical)
-       left_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
-       top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
+         # calculate point position INSIDE the image as percent of total
+         # dimensions from left (horizontal) and from top (vertical)
+         left_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
+         top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
 
-       # calculate distance from left and bottom side of the picture in pixels
-       left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
-       top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
+         # calculate distance from left and bottom side of the picture in pixels
+         left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
+         top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
 
-       # create style property fot tooltip
-       # background color is set so tooltip is a bit transparent
-       # z-index is set so we are sure are tooltip will be on top
-       style <- paste0("position:absolute; z-index:100; background-color: rgba(245, 245, 245, 0.85); ",
-         "left:", left_px + 2, "px; top:", top_px + 2 + 800, "px;")
+         # create style property fot tooltip
+         # background color is set so tooltip is a bit transparent
+         # z-index is set so we are sure are tooltip will be on top
+         style <- paste0("position:absolute; z-index:100; background-color: rgba(245, 245, 245, 0.85); ",
+           "left:", left_px + 2, "px; top:", top_px + 2 + 800, "px;")
 
-       # actual tooltip created as wellPanel
-       wellPanel(
-         style = style,
-         p(HTML(paste0('Y:', input$plotValue_hover$y)))
-       )
-     }
-
-   })
+         # actual tooltip created as wellPanel
+         wellPanel(
+           style = style,
+           p(HTML(paste0('Y:', input$plotValue_hover$y)))
+         )
+       }
+     })
 
    #output$plotUV <- plotly::renderPlotly({
    output$plotUV <- renderPlot({
@@ -2634,26 +2771,39 @@ server <- function(input, output, session) {
          # XXX per ora lascio così, ma si dovrebbe aggiornare solo quando si clicca go10
          #isolate({
          d_imputed <- s_graph(
-             data = datasetInput()$data,
-             outlier = 'unit_value',
-             reference = 'movav_unit_value',
-             keep = c(
-                      'timePointYears',
-                      'unit_value',
-                      'movav_unit_value',
-                      'unit_value_mirror',
-                      'median_world',
-                      'median',
-                      'out',
-                      'reference'
-                      )
-             )
+           data = datasetInput()$data,
+           outlier = 'unit_value',
+           reference = 'movav_unit_value',
+           keep = c(
+                    'timePointYears',
+                    'unit_value',
+                    'movav_unit_value',
+                    'unit_value_mirror',
+                    'median_world',
+                    'median',
+                    'out',
+                    'reference'
+                    )
+           )
 
-         myplotUV_imputed <- d_imputed %>%
+         myplotUV_imputed <-
+           d_imputed %>%
            fun_plot(out = TRUE) +
-             scale_size_manual(values = c('unit_value' = 2, 'median' = 1.5, 'median_world' = 1, 'movav_unit_value' = 1.5, 'unit_value_mirror' = 1)) +
-             scale_colour_manual(values = c('unit_value' = 'red', 'median' = 'yellow', 'median_world' = 'green', 'movav_unit_value' = 'orange', 'unit_value_mirror' = 'purple')) +
-             labs(title = 'Unit value', subtitle = paste('Reporter:', values$reporter, '- Partner:', values$partner, '- Item:', values$item)) #+
+             scale_size_manual(
+               values = c('unit_value' = 2, 'median' = 1.5,
+                          'median_world' = 1, 'movav_unit_value' = 1.5,
+                          'unit_value_mirror' = 1)
+             ) +
+             scale_colour_manual(
+               values = c('unit_value' = 'red',
+                          'median' = 'yellow',
+                          'median_world' = 'green',
+                          'movav_unit_value' = 'orange',
+                          'unit_value_mirror' = 'purple')) +
+             labs(
+               title = 'Unit value',
+               subtitle = paste('Reporter:', values$reporter, '- Partner:', values$partner, '- Item:', values$item)
+              ) #+
              #geom_line(data = d_imputed[!is.na(s$value),], aes(y = value), linetype = 2, size = 1)
 
          if (input$choose_correction == 'Mirror flow') {
@@ -2676,12 +2826,13 @@ server <- function(input, output, session) {
              )
          } else if (input$choose_correction == 'Outlier correction') {
 
-           myvar <- switch(
-                           input$correction_outlier,
-                           'Moving average'  = 'movav_unit_value',
-                           'Median partners' = 'median_uv',
-                           'Median world'    = 'median_uv_world'
-                           )
+           myvar <-
+             switch(
+               input$correction_outlier,
+               'Moving average'  = 'movav_unit_value',
+               'Median partners' = 'median_uv',
+               'Median world'    = 'median_uv_world'
+              )
 
            # XXX ugliness 100%
            s <- datasetInput()[[myvar]]
@@ -2723,22 +2874,23 @@ server <- function(input, output, session) {
          # XXX per ora lascio così, ma si dovrebbe aggiornare solo quando si clicca go10
          #isolate({
          d_imputed <- s_graph(
-             data      = datasetInput()$data,
-             outlier   = 'unit_value',
-             reference = 'movav_unit_value',
-             keep      = c(
-                           'timePointYears',
-                           'unit_value',
-                           'movav_unit_value',
-                           'unit_value_mirror',
-                           'median_world',
-                           'median',
-                           'out',
-                           'reference'
-                           )
-             )
+           data      = datasetInput()$data,
+           outlier   = 'unit_value',
+           reference = 'movav_unit_value',
+           keep      = c(
+                         'timePointYears',
+                         'unit_value',
+                         'movav_unit_value',
+                         'unit_value_mirror',
+                         'median_world',
+                         'median',
+                         'out',
+                         'reference'
+                         )
+           )
 
-         myplotUV_imputed <- d_imputed %>%
+         myplotUV_imputed <-
+           d_imputed %>%
            fun_plot(out = TRUE) +
              scale_size_manual(values = c('unit_value' = 2, 'median' = 1.5, 'median_world' = 1, 'movav_unit_value' = 1.5, 'unit_value_mirror' = 1)) +
              scale_colour_manual(values = c('unit_value' = 'red', 'median' = 'yellow', 'median_world' = 'green', 'movav_unit_value' = 'orange', 'unit_value_mirror' = 'purple')) +
@@ -2747,7 +2899,7 @@ server <- function(input, output, session) {
 
          if (input$choose_correction == 'Mirror flow') {
            tmp_qty <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['qty']]
-           tmp_value <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(values$flow == '1', 1.12, 1/1.12)
+           tmp_value <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value_mirror']] * ifelse(values$flow == '1', 1.12, 1 / 1.12)
 
            myplotUV_imputed$data <- myplotUV_imputed$data %>%
              mutate_db_imputed(
@@ -2954,46 +3106,46 @@ server <- function(input, output, session) {
      }
    })
 
-   output$totalImpact <- renderTable({
-
-     if (values$shouldShow) {
-       # Default case: no imputation
-       db_total_out <- datasetInput()$total
-     } else {
-       if (input$variable2correct == 'Quantity') {
-         db_total_out <- values$db_imputed %>%
-           select(-contains('_bilat_'), -value_imputed) %>%
-           mutate(
-             `absolute diff`  = qty_imputed - qty_original,
-             `percent diff`   = (qty_imputed / qty_original - 1) * 100
-           ) %>%
-           rename(
-             `original quantity`   = qty_original,
-             `imputed quantity`    = qty_imputed,
-             `value`               = value_original,
-             `original unit value` = unit_value_original,
-             `imputed unit value`  = unit_value_imputed
-           )
-       } else if (input$variable2correct == 'Value') {
-         db_total_out <- values$db_imputed %>%
-           select(-contains('_bilat_'), -qty_imputed) %>%
-           mutate(
-             `absolute diff`  = value_imputed - value_original,
-             `percent diff`   = (value_imputed / value_original - 1) * 100
-           ) %>%
-           rename(
-             `original value`      = value_original,
-             `imputed value`       = value_imputed,
-             `qty`                 = qty_original,
-             `original unit value` = unit_value_original,
-             `imputed unit value`  = unit_value_imputed
-           )
+   output$totalImpact <-
+     renderTable({
+       if (values$shouldShow) {
+         # Default case: no imputation
+         db_total_out <- datasetInput()$total
+       } else {
+         if (input$variable2correct == 'Quantity') {
+           db_total_out <- values$db_imputed %>%
+             select(-contains('_bilat_'), -value_imputed) %>%
+             mutate(
+               `absolute diff`  = qty_imputed - qty_original,
+               `percent diff`   = (qty_imputed / qty_original - 1) * 100
+             ) %>%
+             rename(
+               `original quantity`   = qty_original,
+               `imputed quantity`    = qty_imputed,
+               `value`               = value_original,
+               `original unit value` = unit_value_original,
+               `imputed unit value`  = unit_value_imputed
+             )
+         } else if (input$variable2correct == 'Value') {
+           db_total_out <- values$db_imputed %>%
+             select(-contains('_bilat_'), -qty_imputed) %>%
+             mutate(
+               `absolute diff`  = value_imputed - value_original,
+               `percent diff`   = (value_imputed / value_original - 1) * 100
+             ) %>%
+             rename(
+               `original value`      = value_original,
+               `imputed value`       = value_imputed,
+               `qty`                 = qty_original,
+               `original unit value` = unit_value_original,
+               `imputed unit value`  = unit_value_imputed
+             )
+         }
        }
-     }
 
-     db_total_out %>%
-       rename(year = timePointYears)
-   })
+       db_total_out %>%
+         rename(year = timePointYears)
+     })
 
    output$plotTotal <- renderPlotly({
      if (input$go == 0) {
@@ -3047,12 +3199,13 @@ server <- function(input, output, session) {
          gather(variable, value, -timePointYears) %>%
          mutate(variable = stringr::str_replace(variable, '_imputed', ''))
 
-       db_imputed_for_plot <- full_join(
-         x_original,
-         x_imputed,
-         by = c("timePointYears", "variable"),
-         suffix = c("_original", "_imputed")
-       )
+       db_imputed_for_plot <-
+         full_join(
+           x_original,
+           x_imputed,
+           by = c("timePointYears", "variable"),
+           suffix = c("_original", "_imputed")
+         )
 
        g <- gather(db_imputed_for_plot, key, var, -timePointYears, - variable) %>%
          mutate(key = stringr::str_replace(key, 'value_', '')) %>%
@@ -3118,85 +3271,85 @@ server <- function(input, output, session) {
 
        if (input$variable2correct == 'Quantity') {
 
-          if (input$choose_correction == 'Mirror flow') {
-            tmp <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['qty_mirror']]
+         if (input$choose_correction == 'Mirror flow') {
+           tmp <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['qty_mirror']]
 
-             myplotQuantity_imputed$data <- myplotQuantity_imputed$data %>%
-               mutate_db_imputed(
-                 to_impute = 'imputed_qty',
-                 correct   = tmp,
-                 original  = d_imputed$value, variable = 'qty'
+            myplotQuantity_imputed$data <- myplotQuantity_imputed$data %>%
+              mutate_db_imputed(
+                to_impute = 'imputed_qty',
+                correct   = tmp,
+                original  = d_imputed$value, variable = 'qty'
+            )
+
+         } else if (input$choose_correction == 'Measurement factor') {
+           myplotQuantity_imputed$data <- myplotQuantity_imputed$data %>%
+             mutate_db_imputed(
+               to_impute = 'imputed_qty',
+               correct   = d_imputed$value * as.numeric(input$correction10),
+               original  = d_imputed$value,
+               variable  = 'qty'
              )
 
-          } else if (input$choose_correction == 'Measurement factor') {
+         } else if (input$choose_correction == 'Outlier correction') {
+           myvar <- switch(input$correction_outlier, 'Moving average' = 'movav_unit_value', 'Median partners' = 'median_uv', 'Median world' = 'median_uv_world')
+
+           # XXX ugliness 100%
+           s <- datasetInput()[[myvar]]
+           tmp <- as.numeric(s[s$timePointYears == input$year2correct, 2])
+           tmp_value <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value']]
+
+           myplotQuantity_imputed$data <- myplotQuantity_imputed$data %>%
+             mutate_db_imputed(
+               to_impute = 'imputed_qty',
+               correct   = tmp_value / tmp,
+               original  = d_imputed$value,
+               variable  = 'qty'
+             )
+
+         } else if (input$choose_correction == 'Expert knowledge') {
+           tmp <- as.numeric(input$correction_expert)
+
             myplotQuantity_imputed$data <- myplotQuantity_imputed$data %>%
               mutate_db_imputed(
                 to_impute = 'imputed_qty',
-                correct   = d_imputed$value * as.numeric(input$correction10),
+                correct   = tmp,
                 original  = d_imputed$value,
                 variable  = 'qty'
               )
 
-          } else if (input$choose_correction == 'Outlier correction') {
-            myvar <- switch(input$correction_outlier, 'Moving average' = 'movav_unit_value', 'Median partners' = 'median_uv', 'Median world' = 'median_uv_world')
+         } else {
+           # XXX default, dovrebbe essere col metodo "None"
+           myplotQuantity_imputed$data <- myplotQuantity_imputed$data %>%
+             mutate_db_imputed(
+               to_impute = 'imputed_qty',
+               correct   = d_imputed$value,
+               original  = d_imputed$value,
+               variable  = 'qty'
+             ) # XXX twice?
 
-            # XXX ugliness 100%
-            s <- datasetInput()[[myvar]]
-            tmp <- as.numeric(s[s$timePointYears == input$year2correct, 2])
-            tmp_value <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value']]
+         }
 
-            myplotQuantity_imputed$data <- myplotQuantity_imputed$data %>%
-              mutate_db_imputed(
-                to_impute = 'imputed_qty',
-                correct   = tmp_value / tmp,
-                original  = d_imputed$value,
-                variable  = 'qty'
-              )
+         if (values$remove_old) {
+           myplotQuantity_imputed$data <- myplotQuantity_imputed$data %>%
+             mutate(value = ifelse(variable == 'qty', imputed_qty, value))
+         }
 
-          } else if (input$choose_correction == 'Expert knowledge') {
-            tmp <- as.numeric(input$correction_expert)
+         values$imputed_qty <- myplotQuantity_imputed$data %>%
+           filter(variable == 'qty') %>%
+           select(timePointYears, variable, original = value, imputed = imputed_qty)
 
-             myplotQuantity_imputed$data <- myplotQuantity_imputed$data %>%
-               mutate_db_imputed(
-                 to_impute = 'imputed_qty',
-                 correct   = tmp,
-                 original  = d_imputed$value,
-                 variable  = 'qty'
-               )
-
-          } else {
-            # XXX default, dovrebbe essere col metodo "None"
-            myplotQuantity_imputed$data <- myplotQuantity_imputed$data %>%
-              mutate_db_imputed(
-                to_impute = 'imputed_qty',
-                correct   = d_imputed$value,
-                original  = d_imputed$value,
-                variable  = 'qty'
-              ) # XXX twice?
-
-          }
-
-          if (values$remove_old) {
-            myplotQuantity_imputed$data <- myplotQuantity_imputed$data %>%
-              mutate(value = ifelse(variable == 'qty', imputed_qty, value))
-          }
-
-          values$imputed_qty <- myplotQuantity_imputed$data %>%
-            filter(variable == 'qty') %>%
-            select(timePointYears, variable, original = value, imputed = imputed_qty)
-
-          myplotQuantity_imputed + geom_line(aes(y = imputed_qty), colour ='black', size = 1.5)
+         myplotQuantity_imputed + geom_line(aes(y = imputed_qty), colour ='black', size = 1.5)
 
          #})
        } else { # variable2correct == 'Value'
-          values$imputed_qty <- myplotQuantity_imputed$data %>%
-            filter(variable == 'qty') %>%
-            select(timePointYears, variable, original = value) %>%
-            ## XXX this may be given always in any case
-            mutate(imputed = original)
+         values$imputed_qty <- myplotQuantity_imputed$data %>%
+           filter(variable == 'qty') %>%
+           select(timePointYears, variable, original = value) %>%
+           ## XXX this may be given always in any case
+           mutate(imputed = original)
 
 
-          myplotQuantity_imputed
+         myplotQuantity_imputed
        }
      }
    })
@@ -3210,7 +3363,8 @@ server <- function(input, output, session) {
       d <- try(as.data.frame(a))
 
       if (class(d) != 'try-error') {
-        dHS <- d %>%
+        dHS <-
+          d %>%
           select(
             -UNIT_MULT,
             -DECIMALS,
