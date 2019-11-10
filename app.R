@@ -134,7 +134,7 @@ s_graph <- function(data = NA, outlier = NA, reference = NA, keep = NA) {
     # XXX better 'target' as name
     x <- data[[outlier]]
     y <- data[[reference]]
-    data[, 'out'] <- ifelse((!is.na(x) & (x < 0.5*y | x > 1.5*y)), x, NA_real_)
+    data[, 'out'] <- ifelse((!is.na(x) & (x < 0.5 * y | x > 1.5 * y)), x, NA_real_)
   }
 
   data[, 'reference'] <- data[[reference]]
@@ -629,6 +629,8 @@ server <- function(input, output, session) {
   choose_data <- function(data = values$db, .flow = NA, .reporter = NA,
                           .partner = NA, .item = NA) {
 
+    browser()
+
     # This is important as if we leave it as a character dplyr's filter
     # will work, but it will require more time
     .flow <- as.integer(.flow)
@@ -680,7 +682,7 @@ server <- function(input, output, session) {
       summarise_at(c('qty', 'value'), sum, na.rm = TRUE) %>%
       ungroup() %>%
       mutate(unit_value = value / qty) %>%
-      complete(timePointYears = sort(unique(data$timePointYears)))
+      complete(timePointYears = sort(years[years != ""]))
 
     
     tmp_1 <- tmp %>%
@@ -707,7 +709,7 @@ server <- function(input, output, session) {
       filter(reporter_name == .reporter) %>%
       select(partner_name, timePointYears) %>%
       count(timePointYears) %>%
-      complete(timePointYears = sort(unique(data$timePointYears)))
+      complete(timePointYears = sort(years[years != ""]))
 
     db_reporter <- tmp %>%
       filter(reporter_name == .reporter, partner_name == .partner) %>%
@@ -719,7 +721,7 @@ server <- function(input, output, session) {
         geographicAreaM49Partner,
         measuredItemCPC,
         item_name,
-        timePointYears = sort(unique(data$timePointYears))
+        timePointYears = sort(years[years != ""])
       ) %>%
       arrange(partner_name, timePointYears) %>%
       mutate(
@@ -738,7 +740,7 @@ server <- function(input, output, session) {
         reporter_name == .partner,
         partner_name  == .reporter
       ) %>%
-      mutate(value == ifelse(flow == 2, value * 1.12, value/1.12)) %>%
+      mutate(value = ifelse(flow == 2, value * 1.12, value / 1.12)) %>%
       select(timePointYears, qty, value, weight, flag_qty, flag_value, flag_weight) %>%
       rename(
         qty_mirror         = qty,
@@ -757,74 +759,81 @@ server <- function(input, output, session) {
 
     # Use corrections
     if (input$use_corrected_data) {
-      sub_corrections_table <- values$corrections %>%
+      sub_corrections_table <-
+        values$corrections %>%
         filter(
           reporter %in% unique(res$geographicAreaM49Reporter),
           partner  %in% unique(res$geographicAreaM49Partner),
           item     %in% unique(res$measuredItemCPC),
           flow     %in% unique(res$flow)
-        ) %>%
-        select(reporter, partner, year, item, flow, data_type, correction_input) %>%
-        complete(nesting(reporter, partner, year, item, flow), data_type = c('qty', 'value')) %>%
-        mutate(
-          data_type = paste0(data_type, '_corr'),
-          year      = as.character(year),
-          corrected = TRUE
-        ) %>%
-        tidyr::spread(data_type, correction_input) %>%
-        as.data.table()
+        )
 
-      colnames(sub_corrections_table) <- c('geographicAreaM49Reporter',
-                                           'geographicAreaM49Partner',
-                                           'timePointYears',
-                                           'measuredItemCPC',
-                                           'flow',
-                                           'corrected',
-                                           'qty_corr',
-                                           'value_corr')
+      if (nrow(sub_corrections_table) > 0) {
 
-      res <- sub_corrections_table[res %>% as.data.table(), , on = c('geographicAreaM49Reporter', 'geographicAreaM49Partner', 'timePointYears', 'measuredItemCPC', 'flow')]
+        sub_corrections_table <-
+          sub_corrections_table %>%
+          select(reporter, partner, year, item, flow, data_type, correction_input) %>%
+          complete(nesting(reporter, partner, year, item, flow), data_type = c('qty', 'value')) %>%
+          mutate(
+            data_type = paste0(data_type, '_corr'),
+            year      = as.character(year),
+            corrected = TRUE
+          ) %>%
+          tidyr::spread(data_type, correction_input) %>%
+          as.data.table()
 
-      res[is.na(corrected), corrected := FALSE]
+          colnames(sub_corrections_table) <- c('geographicAreaM49Reporter',
+                                               'geographicAreaM49Partner',
+                                               'timePointYears',
+                                               'measuredItemCPC',
+                                               'flow',
+                                               'corrected',
+                                               'qty_corr',
+                                               'value_corr')
 
-      res$qty_mirror_corr <- NA_real_
-      res$value_mirror_corr <- NA_real_
+          res <- sub_corrections_table[res %>% as.data.table(), , on = c('geographicAreaM49Reporter', 'geographicAreaM49Partner', 'timePointYears', 'measuredItemCPC', 'flow')]
 
-      ## When the partner is going to be corrected, it should have
-      ## 'T' inside flag_value if it's a mirror flow (needs correction)
-      cond <- res$corrected & grepl('T', res$flag_value_mirror)
+          res[is.na(corrected), corrected := FALSE]
 
-      res[cond & !is.na(qty_corr), qty_mirror_corr := qty_corr]
-      # In this case the flow is the reporter's
-      res[cond & !is.na(value_corr), value_mirror_corr := as.numeric(ifelse(flow == 2L, value_corr*1.12, value_corr/1.12))]
+          res$qty_mirror_corr <- NA_real_
+          res$value_mirror_corr <- NA_real_
 
-      # Flag NEEDS CORRECTION
-      res[!is.na(corrected) & !is.na(value_corr), flag_value        := 'XXX']
-      res[!is.na(corrected) & !is.na(qty_corr),   flag_qty          := 'XXX']
-      res[cond & !is.na(value_corr),              flag_value_mirror := 'XXX']
-      res[cond & !is.na(qty_corr),                flag_qty_mirror   := 'XXX']
+          ## When the partner is going to be corrected, it should have
+          ## 'T' inside flag_value if it's a mirror flow (needs correction)
+          cond <- res$corrected & grepl('T', res$flag_value_mirror)
 
-      res[flag_value        != 'XXX', value_corr := value]
-      res[flag_qty          != 'XXX', qty_corr := qty]
-      res[flag_value_mirror != 'XXX', value_mirror_corr := value_mirror]
-      res[flag_qty_mirror   != 'XXX', qty_mirror_corr := qty_mirror]
+          res[cond & !is.na(qty_corr), qty_mirror_corr := qty_corr]
+          # In this case the flow is the reporter's
+          res[cond & !is.na(value_corr), value_mirror_corr := as.numeric(ifelse(flow == 2L, value_corr * 1.12, value_corr / 1.12))]
 
-     res <- res %>%
-       mutate(
-         qty_orig               = qty,
-         value_orig             = value,
-         unit_value_orig        = value/qty,
-         qty_mirror_orig        = qty_mirror,
-         value_mirror_orig      = value_mirror,
-         unit_value_mirror_orit = value_mirror/qty_mirror,
-         qty                    = qty_corr,
-         value                  = value_corr,
-         unit_value             = value_corr/qty_corr,
-         qty_mirror             = qty_mirror_corr,
-         value_mirror           = value_mirror_corr,
-         unit_value_mirror      = value_mirror_corr/qty_mirror_corr
-       ) %>%
-       tbl_df()
+          # Flag NEEDS CORRECTION
+          res[!is.na(corrected) & !is.na(value_corr), flag_value        := 'XXX']
+          res[!is.na(corrected) & !is.na(qty_corr),   flag_qty          := 'XXX']
+          res[cond & !is.na(value_corr),              flag_value_mirror := 'XXX']
+          res[cond & !is.na(qty_corr),                flag_qty_mirror   := 'XXX']
+
+          res[flag_value        != 'XXX', value_corr := value]
+          res[flag_qty          != 'XXX', qty_corr := qty]
+          res[flag_value_mirror != 'XXX', value_mirror_corr := value_mirror]
+          res[flag_qty_mirror   != 'XXX', qty_mirror_corr := qty_mirror]
+
+         res <- res %>%
+           mutate(
+             qty_orig               = qty,
+             value_orig             = value,
+             unit_value_orig        = value / qty,
+             qty_mirror_orig        = qty_mirror,
+             value_mirror_orig      = value_mirror,
+             unit_value_mirror_orig = value_mirror / qty_mirror,
+             qty                    = qty_corr,
+             value                  = value_corr,
+             unit_value             = value_corr / qty_corr,
+             qty_mirror             = qty_mirror_corr,
+             value_mirror           = value_mirror_corr,
+             unit_value_mirror      = value_mirror_corr / qty_mirror_corr
+           ) %>%
+           tbl_df()
+        }
 
     } else {
       res$corrected <- FALSE
@@ -1009,173 +1018,17 @@ server <- function(input, output, session) {
   #})
 
   observeEvent(input$go_db, {
-    ## only at initialisation
-    #if (is.na(USERNAME)) {
-    #  showModal(
-    #    modalDialog(
-    #      title = "Set your user name",
-    #        "You have to set your user name before selecting reporters/partners."
-    #      )
-    #    )
-    #} else {
+
       if (is.null(values$mydb)) {
-
-        # apply existing corrections
-
-        ### METHOD 1
-        #correct_complete_database <- function(mirror = FALSE) {
-        #  if (mirror) {
-        #    res <- right_join(
-        #    db,
-        #    values$corrections %>%
-        #      select(reporter, partner, year, item, flow, data_type, correction_input) %>%
-        #      mutate(year = as.character(year), flow = ifelse(flow == 1L, 2L, 1L)),
-        #    by = c(
-        #      'geographicAreaM49Reporter' = 'partner',
-        #      'geographicAreaM49Partner' = 'reporter',
-        #      'measuredItemCPC' = 'item',
-        #      'flow',
-        #      'timePointYears' = 'year'
-        #      )
-        #    ) %>%
-        #    mutate(data_type = paste0(data_type, '_corr')) %>%
-        #    tidyr::spread(data_type, correction_input) %>%
-        #    # XXX should "data_original" be kept and compared to the data
-        #    # in case of missing/wrong mirror flags?
-        #    filter(grepl('T', flag_value)) %>%
-        #    mutate(
-        #      qty_corr   = ifelse(is.na(qty_corr), qty, qty_corr),
-        #      value_corr = ifelse(is.na(value_corr), value, ifelse(flow == 1L, value_corr*1.12, value_corr/1.12))
-        #    )
-        #  } else {
-        #    res <- right_join(
-        #    db,
-        #    values$corrections %>%
-        #      select(reporter, partner, year, item, flow, data_type, correction_input) %>%
-        #      mutate(year = as.character(year)),
-        #    by = c(
-        #      'geographicAreaM49Reporter' = 'reporter',
-        #      'geographicAreaM49Partner' = 'partner',
-        #      'measuredItemCPC' = 'item',
-        #      'flow',
-        #      'timePointYears' = 'year'
-        #      )
-        #    ) %>%
-        #    mutate(data_type = paste0(data_type, '_corr')) %>%
-        #    tidyr::spread(data_type, correction_input) %>%
-        #    mutate(
-        #      qty_corr   = ifelse(is.na(qty_corr), qty, qty_corr),
-        #      value_corr = ifelse(is.na(value_corr), value, value_corr)
-        #    )
-        #  } 
-
-        #  return(res)
-        #}
-
-
-
-        #tmp_reporter = correct_complete_database(mirror = FALSE)
-        #tmp_partner  = correct_complete_database(mirror = TRUE)
-
-        #data_corrected <- bind_rows(tmp_reporter, tmp_partner) %>% mutate(corrected = TRUE)
-
-
-        #data_no_need <- anti_join(
-        #              db %>%
-        #                mutate(qty_corr = qty, value_corr = value, corrected = FALSE),
-        #              data_corrected,
-        #              by = c("flow", "geographicAreaM49Reporter", "geographicAreaM49Partner", "measuredItemCPC", "timePointYears")
-        #              )
-
-        #values$db <- bind_rows(data_corrected, data_no_need) %>% rename(qty_orig = qty, value_orig = value, qty = qty_corr, value = value_corr)
-        ## / METHOD 1
-
-
-
-        ## METHOD 2
-        #if (input$use_corrected_data) {
-        #  sub_corrections_table_rep <- values$corrections %>%
-        #    select(reporter, partner, year, item, flow, data_type, correction_input) %>%
-        #    complete(nesting(reporter, partner, year, item, flow), data_type = c('qty', 'value')) %>%
-        #    #filter(
-        #    #  reporter %in% unique(data$geographicAreaM49Reporter),
-        #    #  partner  %in% unique(data$geographicAreaM49Partner),
-        #    #  item     %in% unique(data$measuredItemCPC),
-        #    #  flow     %in% unique(data$flow)
-        #    #) %>%
-        #    mutate(
-        #      data_type = paste0(data_type, '_corr'),
-        #      year = as.character(year),
-        #      rep_corrected = TRUE
-        #    ) %>%
-        #    tidyr::spread(data_type, correction_input)
-
-        #  sub_corrections_table_prt <- sub_corrections_table_rep %>%
-        #    rename(reporter = partner, partner = reporter) %>%
-        #    mutate(
-        #      flow = recode(flow, `1` = 2L, `2` = 1L),
-        #      value_corr = ifelse(flow == 1L, value_corr*1.12, value_corr/1.12),
-        #      rep_corrected = FALSE
-        #    )
-
-        #  sub_corrections_table <- bind_rows(sub_corrections_table_rep, sub_corrections_table_prt) %>% as.data.table()
-
-        #  colnames(sub_corrections_table) <- c('geographicAreaM49Reporter',
-        #                                       'geographicAreaM49Partner',
-        #                                       'timePointYears',
-        #                                       'measuredItemCPC',
-        #                                       'flow',
-        #                                       'rep_corrected',
-        #                                       'qty_corr',
-        #                                       'value_corr')
-
-        #  values$db <- sub_corrections_table[db %>% as.data.table(), , on = c('geographicAreaM49Reporter', 'geographicAreaM49Partner', 'timePointYears', 'measuredItemCPC', 'flow')]
-
-        #  # When the partner is going to be corrected, it should have
-        #  # 'T' inside flag_value if it's a mirror flow (needs correction)
-        #  cond <- !values$db$rep_corrected & !grepl('T', values$db$flag_value)
-
-        #  values$db[cond, c('rep_corrected', 'qty_corr', 'value_corr') := NA]
-
-        #  values$db[is.na(value_corr), value_corr := value]
-        #  values$db[is.na(qty_corr),   qty_corr   := qty]
-
-        #  # XXX Flag NEEDS CORRECTION
-        #  values$db[!is.na(rep_corrected) & !is.na(value_corr), flag_value := 'XXX']
-        #  values$db[!is.na(rep_corrected) & !is.na(qty_corr),   flag_qty  := 'XXX']
-
-
-        #  values$db[, c('qty_orig', 'value_orig', 'unit_value_orig', 'qty', 'value', 'unit_value', 'unit_value_corr') := list(qty, value, value/qty, NA, NA, NA, value_corr/qty_corr)]
-
-        #  values$db[, c('qty', 'value', 'unit_value') := list(qty_corr, value_corr, unit_value_corr)]
-
-        #  rm(cond, sub_corrections_table, sub_corrections_table_rep, sub_corrections_table_prt)
-        #  invisible(gc())
-        #} else {
-        #  values$db <- db
-        #}
-
-        #values$db <- values$db %>% tbl_df()
 
         values$db <- db
 
-        ## / METHOD 2
-
-
-
-
-        # /apply existing corrections
-
-        
         values$mydb <- filter(db, reporter_name %in% input$reporter_start)
 
         if (!('All items' %in% input$item_start)) {
           values$mydb <- filter(values$mydb, item_name %in% input$item_start)
         }
-
-        #updateTabsetPanel(session, 'main', 'Datatable')
       }
-    #}
   })
 
   observeEvent(input$go, values$shouldShow <- TRUE)
@@ -1415,11 +1268,11 @@ server <- function(input, output, session) {
 
       tmp <- values$corrections %>%
         filter(
-          reporter == reporter_code,
-          partner == partner_code,
-          flow == as.integer(values$flow),
-          item == item_code,
-          year == as.integer(input$year2correct),
+          reporter  == reporter_code,
+          partner   == partner_code,
+          flow      == as.integer(values$flow),
+          item      == item_code,
+          year      == as.integer(input$year2correct),
           data_type == ifelse(input$variable2correct == 'Quantity', 'qty', 'value')
         )
 
@@ -1685,12 +1538,12 @@ server <- function(input, output, session) {
         # filtering cell to display options, but the options will be cut
         # (it seems a DT bug or some missing option)
         mutate(
-          year = as.integer(year),
+          year       = as.integer(year),
           unit_value = round(unit_value, 3),
-          ma = round(ma, 3),
-          flow = ifelse(flow == 1, 'import', 'export'),
-          corrected = if_else(corrected, corrected, FALSE, FALSE),
-          qty_unit = ifelse(qty_unit == 't', 'tonnes', qty_unit)
+          ma         = round(ma, 3),
+          flow       = ifelse(flow == 1, 'import', 'export'),
+          corrected  = if_else(corrected, corrected, FALSE, FALSE),
+          qty_unit   = ifelse(qty_unit == 't', 'tonnes', qty_unit)
         ) %>%
         DT::datatable(
           callback =
@@ -2193,7 +2046,7 @@ server <- function(input, output, session) {
      s <- datasetInput()
 
      tmp <- data_frame(
-       type = c('Median partners', 'Median World', 'Moving average'),
+       type  = c('Median partners', 'Median World', 'Moving average'),
        value = unlist(
                  sapply(s[c('median_uv', 'median_uv_world', 'movav_unit_value')],
                  function(x) x[x$timePointYears == input$year2correct, -1]))
@@ -2266,8 +2119,8 @@ server <- function(input, output, session) {
            mutate(outval = value * out) %>%
            group_by(reporter_name, timePointYears) %>%
            summarise(
-             totvalue = sum(outval, na.rm=TRUE)/sum(value, na.rm=TRUE),
-             perc = sum(out)/sum(!is.na(qty))
+             totvalue = sum(outval, na.rm=TRUE) / sum(value, na.rm=TRUE),
+             perc = sum(out) / sum(!is.na(qty))
            ) %>%
            treemap::treemap(
              index = c('reporter_name', 'timePointYears'),
@@ -2478,7 +2331,7 @@ server <- function(input, output, session) {
              n.out = sum(out),
              n.tot = sum(!is.na(unit_value)),
              perc.out = n.out / n.tot,
-             perc.value = sum(value * out, na.rm=TRUE)/sum(value, na.rm=TRUE)
+             perc.value = sum(value * out, na.rm = TRUE)/sum(value, na.rm = TRUE)
            ) %>%
            arrange(desc(perc.out)) %>%
            DT::datatable() %>%
