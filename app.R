@@ -50,8 +50,6 @@ if (app_mode == 'production') {
   stop('The "mode" should be either "test" or "production"')
 }
 
-page_flows <- 'http://hqlprsws1.hq.un.fao.org:3838/flows/'
-
 fcl_codes <- read_csv(fcl_2_cpc_file)$fcl
 element_units <- read_csv(element_units_file)
 
@@ -964,12 +962,6 @@ server <- function(input, output, session) {
   }
 
   USERNAME <- NA
-
-  ## output$myiframe1 <- renderUI({
-  ##   my_iframe <- tags$iframe(src = page_flows, height = '800px', width = '100%')
-  ##   #print(my_iframe)
-  ##   my_iframe
-  ## })
 
   types_correction <- c(
     'None',
