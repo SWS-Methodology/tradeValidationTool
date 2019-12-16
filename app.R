@@ -468,7 +468,6 @@ ui <- function(request) {
    #tabPanel('test_value', htmlOutput("test_value")),
    #tabPanel('test_uv', htmlOutput("test_uv")),
    #tabPanel('test_all', htmlOutput("test_all")),
-   #tabPanel('test_s', tableOutput("test_s")),
    tabPanel('debug', htmlOutput("debug"))
    #tabPanel('test', conditionalPanel(condition = paste0('["', paste(valid_analysts, collapse='", "'), '"]', '.indexOf(input.username) !== -1'), tableOutput("debug")))
   )
@@ -1000,7 +999,6 @@ server <- function(input, output, session) {
     imputed_value         = NA,
     imputed_uv            = NA,
     db_imputed            = NA,
-    test_s                = NA,
     unmapped_links        = NA,
     valid_user            = FALSE,
     reporter              = NA,
@@ -2601,8 +2599,6 @@ server <- function(input, output, session) {
        })
      })
 
-   output$test_s <- renderTable(values$test_s)
-
    tooltip_well <- function(hover, add_top = 0) {
      if (is.null(hover$y)) {
        NULL
@@ -2670,8 +2666,6 @@ server <- function(input, output, session) {
                     'reference'
                     )
            )
-
-         values$test_s <- s
 
          myplotUV <- s %>%
            fun_plot(out = TRUE) +
@@ -2745,7 +2739,8 @@ server <- function(input, output, session) {
            tmp_qty <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['qty_mirror']]
            tmp_value <- (datasetInput()$data %>% filter(timePointYears == input$year2correct))[['value']]
 
-           myplotUV_imputed$data <- myplotUV_imputed$data %>%
+           myplotUV_imputed$data <-
+             myplotUV_imputed$data %>%
              mutate_db_imputed(
                to_impute = 'imputed_unit_value',
                correct   = tmp_value / tmp_qty,
@@ -2754,7 +2749,8 @@ server <- function(input, output, session) {
              ) # XXX twice?
          } else if (input$choose_correction == 'Measurement factor') {
 
-           myplotUV_imputed$data <- myplotUV_imputed$data %>%
+           myplotUV_imputed$data <-
+             myplotUV_imputed$data %>%
              mutate(
                imputed_unit_value = ifelse(timePointYears == input$year2correct, d_imputed$value / as.numeric(input$correction10), d_imputed$value),
                imputed_unit_value = ifelse(variable == 'unit_value', imputed_unit_value, NA)
@@ -3289,35 +3285,36 @@ server <- function(input, output, session) {
      }
    })
 
-  output$okHSdata <- downloadHandler(
-    filename = function() {
-      paste('data', 'csv', sep = '.')
-    },
-    content = function(file) {
-      a <- rsdmx::readSDMX('https://comtrade.un.org/ws/getsdmxtarifflinev1.aspx?y=2011&r=124&p=156&rg=1&comp=false&cc=440399*')
-      d <- try(as.data.frame(a))
+  output$okHSdata <-
+    downloadHandler(
+      filename = function() {
+        paste('data', 'csv', sep = '.')
+      },
+      content = function(file) {
+        a <- rsdmx::readSDMX('https://comtrade.un.org/ws/getsdmxtarifflinev1.aspx?y=2011&r=124&p=156&rg=1&comp=false&cc=440399*')
+        d <- try(as.data.frame(a))
 
-      if (class(d) != 'try-error') {
-        dHS <-
-          d %>%
-          select(
-            -UNIT_MULT,
-            -DECIMALS,
-            -CURRENCY,
-            -FREQ,
-            -TIME_FORMAT,
-            -REPORTED_CLASSIFICATION,
-            -FLOWS_IN_DATASET,
-            -REPORTED_CURRENCY,
-            -CONVERSION_FACTOR
-          )
-      } else {
-        dHS <- data.frame(message='NO DATA')
+        if (class(d) != 'try-error') {
+          dHS <-
+            d %>%
+            select(
+              -UNIT_MULT,
+              -DECIMALS,
+              -CURRENCY,
+              -FREQ,
+              -TIME_FORMAT,
+              -REPORTED_CLASSIFICATION,
+              -FLOWS_IN_DATASET,
+              -REPORTED_CURRENCY,
+              -CONVERSION_FACTOR
+            )
+        } else {
+          dHS <- data.frame(message='NO DATA')
+        }
+
+        write.csv(dHS, file)
       }
-
-      write.csv(dHS, file)
-    }
-  )
+    )
 
   output$downloadData <- downloadHandler(
     filename = function() {
