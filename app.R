@@ -7,6 +7,7 @@ library(readr)
 library(readxl)
 library(plotly)
 library(data.table)
+library(faosws)
 # stringr
 # zoo
 # DT
@@ -42,15 +43,24 @@ users_file             <- paste0(files_location, 'users.txt')
 if (app_mode == 'production') {
   # XXX the dir should be in config file
   corrections_dir <- paste0('/work/SWS_R_Share/trade/validation_tool_files')
-  db_file          <- paste0('/work/SWS_R_Share/trade/validation_tool_files/', 'db.rds')
+  db_file         <- paste0('/work/SWS_R_Share/trade/validation_tool_files/', 'db.rds')
+  CONFIG_CERTIFICATES <- "/srv/shiny-server/PRODvalidation/files/certificates/qa"
+  LOCAL_TRADE_FILES <- "/work/SWS_R_Share/PRODvalidation/data/trade"
+  TRADEMAP_DIR <- "/work/SWS_R_Share/trade/validation_tool_files/rawtrade"
 } else if (app_mode == 'test') {
   corrections_dir <- file.path(persistent_files, 'test')
-  db_file          <- file.path(persistent_files, 'test', 'db.rds')
+  db_file         <- file.path(persistent_files, 'test', 'db.rds')
+  CONFIG_CERTIFICATES <- "C:/Users/mongeau.FAODOMAIN/Documents/certificates/qa"
+  LOCAL_TRADE_FILES <- "C:/Users/mongeau.FAODOMAIN/Dropbox/FAO/FBS/production_outliers/data/trade"
+  TRADEMAP_DIR <- "r:/trade/validation_tool_files/rawtrade"
 } else {
   stop('The "mode" should be either "test" or "production"')
 }
 
-fcl_codes <- read_csv(fcl_2_cpc_file)$fcl
+fcl_2_cpc <- fread(fcl_2_cpc_file, colClasses = c('integer', 'character'))
+# XXX: remove multiple CPC 0112
+fcl_2_cpc <- fcl_2_cpc[!(fcl %in% 67:68)]
+fcl_codes <- fcl_2_cpc$fcl
 element_units <- read_csv(element_units_file)
 
 users <- read.table(users_file, header = TRUE, stringsAsFactors = FALSE)
@@ -59,18 +69,16 @@ db <- readRDS(file = db_file)
 
 db <- left_join(db, element_units, by = 'measuredItemCPC')
 
-hs_descr <- data.frame(
+hs_descr <- data.table(
     hs = unlist(lapply(RJSONIO::fromJSON(comtrade_classif_file)$results, function(x) x[['id']])),
-    description = unlist(lapply(RJSONIO::fromJSON(comtrade_classif_file)$results, function(x) x[['text']])),
-    stringsAsFactors = FALSE
+    description = unlist(lapply(RJSONIO::fromJSON(comtrade_classif_file)$results, function(x) x[['text']]))
   )
 
-hs_descr_hs6 <- hs_descr %>%
-  mutate(hslength = nchar(hs), description = stringr::str_replace(description, '^.* - *', '')) %>%
-  filter(hslength == 6) %>%
-  select(-hslength) %>%
-  rename(hs6 = hs)
-
+hs_descr_hs6 <-
+  hs_descr[
+    nchar(hs) == 6,
+    .(hs6 = hs, description = stringr::str_replace(description, '^.* - *', ''))
+  ]
 
 items_comtrade <- hs_descr$hs
 names(items_comtrade) <- hs_descr$description
@@ -81,6 +89,138 @@ names(reporters_comtrade) <- unlist(lapply(RJSONIO::fromJSON(comtrade_reporter_f
 
 partners_comtrade <- unlist(lapply(RJSONIO::fromJSON(comtrade_partner_file)$results, function(x) x[['id']]))
 names(partners_comtrade) <- unlist(lapply(RJSONIO::fromJSON(comtrade_partner_file)$results, function(x) x[['text']]))
+
+# rollavg() is a rolling average function that uses computed averages
+# to generate new values if there are missing values (and FOCB/LOCF).
+# I.e.:
+# vec <- c(NA, 2, 3, 2.5, 4, 3, NA, NA, NA)
+#
+#> RcppRoll::roll_mean(myvec, 3, fill = 'extend', align = 'right')
+#[1]       NA       NA       NA 2.500000 3.166667 3.166667       NA       NA       NA 
+#
+#> rollavg(myvec)
+#[1] 2.000000 2.000000 3.000000 2.500000 4.000000 3.000000 3.166667 3.388889 3.185185
+
+rollavg <- function(x, order = 3) {
+  # order should be > 2
+  stopifnot(order >= 3)
+  
+  non_missing <- sum(!is.na(x))
+  
+  # For cases that have just two non-missing observations
+  order <- ifelse(order > 2 & non_missing == 2, 2, order)
+  
+  if (non_missing == 1) {
+    x[is.na(x)] <- na.omit(x)[1]
+  } else if (non_missing >= order) {
+    n <- 1
+    while(any(is.na(x)) & n <= 10) { # 10 is max tries
+      movav <- suppressWarnings(RcppRoll::roll_mean(x, order, fill = 'extend', align = 'right'))
+      movav <- data.table::shift(movav)
+      x[is.na(x)] <- movav[is.na(x)]
+      n <- n + 1
+    }
+    
+    x <- zoo::na.fill(x, 'extend')
+  }
+  
+  return(x)
+}
+
+
+# credits: https://gist.github.com/kylebgorman/6444612
+
+aicc.loess <- function(fit) {
+    # compute AIC_C for a LOESS fit, from:
+    # 
+    # Hurvich, C.M., Simonoff, J.S., and Tsai, C. L. 1998. Smoothing 
+    # parameter selection in nonparametric regression using an improved 
+    # Akaike Information Criterion. Journal of the Royal Statistical 
+    # Society B 60: 271–293.
+    # 
+    # @param fit        loess fit
+    # @return           'aicc' value
+    stopifnot(inherits(fit, 'loess'))
+    # parameters
+    n <- fit$n
+    trace <- fit$trace.hat
+    sigma2 <- sum(resid(fit) ^ 2) / (n - 1)
+    return(log(sigma2) + 1 + (2 * (trace + 1)) / (n - trace - 2))
+}
+
+autoloess <- function(data = NA, fit, span = c(.1, .9), myform) {
+    # compute loess fit which has span minimizes AIC_C
+    # 
+    # @param fit        loess fit; span parameter value doesn't matter
+    # @param span       a two-value vector representing the minimum and 
+    #                   maximum span values
+    # @return           loess fit with span minimizing the AIC_C function
+    stopifnot(inherits(fit, 'loess'), length(span) == 2)
+    # loss function in form to be used by optimize
+    f <- function(span) aicc.loess(update(data = data, fit, myform, span = span))
+    # find best loess according to loss function
+    return(update(fit, span=optimize(f, span)$minimum))
+}
+
+# / https://gist.github.com/kylebgorman/6444612
+
+
+# Note: forecast::supsmu can be used instead of the optimally chosen LOESS,
+# only in the case no SE is required (thresholds = "bootstrap*")
+compute_loess <- function(data, var, thresholds = "se") {
+  mypredict <- NA_real_
+  mylower   <- NA_real_
+  myupper   <- NA_real_
+
+  # Remove initial missing observations (add them at the end)
+  init_miss <- cumsum(!is.na(data[[var]]))
+  data <- data[init_miss > 0]
+
+  if (!all(is.na(data[data$year >= 2000][[var]]) | dplyr::near(data[data$year >= 2000][[var]], 0))) {
+
+    myform     <- as.formula(paste(var, "year", sep = "~"))
+    init.loess <- loess(data = data, myform, span = 0.9)
+    myloess    <- autoloess(data = data, init.loess, span = c(0.1, 0.9), myform)
+    pred       <- predict(newdata = data, myloess, se = TRUE)
+    mypredict  <- pred$fit
+    myspan     <- myloess$pars$span
+
+    se_thresh <- ifelse(grepl(".3..", var), 3, 5)
+
+    if (thresholds == "se") {
+      myse.fit   <- pred$se.fit
+      mylower    <- mypredict - se_thresh * myse.fit
+      myupper    <- mypredict + se_thresh * myse.fit
+    } else if (thresholds == "iqr") {
+      myresid <- data[[var]] - mypredict
+      residq <- quantile(myresid, prob = c(0.25, 0.75), na.rm = TRUE)
+      mylower <- mypredict + residq[1] - 1.5 * (residq[2] - residq[1])
+      myupper <- mypredict + residq[2] + 1.5 * (residq[2] - residq[1])
+    } else if (thresholds == "bootstrap") {
+      myresid <- data[[var]] - mypredict
+      set.seed(1)
+      boot <- quantile(sample(abs(myresid), 1000, replace = TRUE), 0.9, na.rm = TRUE)
+      mylower <- mypredict - boot
+      myupper <- mypredict + boot
+    } else if (thresholds == "bootstraprel") {
+      myresid <- data[[var]] / mypredict
+      set.seed(1)
+      boot <- quantile(sample(abs(myresid), 1000, replace = TRUE), 0.9, na.rm = TRUE)
+      mylower <- mypredict / boot
+      myupper <- mypredict * boot
+    }
+  }
+
+  if (any(init_miss == 0)) {
+    m <- rep(NA_real_, length(init_miss[init_miss == 0]))
+    mypredict <- c(m, mypredict)
+    mylower   <- c(m, mylower)
+    myupper   <- c(m, myupper)
+  }
+
+  return(list(mypredict, mylower, myupper))
+}
+
 
 
 powers <- function(to.check, benchmark) {
@@ -359,116 +499,144 @@ ui <- function(request) {
         )
       )
     ),
-   tabPanel('Datatable',
-     fluidRow(
-       column(6,
-         selectInput('outlier_method',
-           'Choose an outlier detection method:',
-           c('Fixed threshold', 'Variable threshold', '100 median', 'Boxplot', 'All data')
-         )
-       ),
-       column(6,
-         actionButton("show_full_table", "Show table")
-       )
-       #checkboxInput("link_new_window", "Open links in new tab", FALSE),
-     ),
-     fluidRow(
-       column(12,
-         DT::dataTableOutput("full_out_table")
-       )
-     )
-   ),
-   #tabPanel('HS codes', tableOutput("hsdrilldown")),
-   tabPanel(
-     'Corrections',
-     conditionalPanel(
-       condition = 'input.okCorrection > 0',
-       verbatimTextOutput("corrections_message")
-     ),
-     # XXX in theory this should be visible only when a first correction
-     # has been confirmed (as above), but it is not doing that
-     actionButton("sync_corrections_table", "Synchronise table"),
-     actionButton("delete_correction", "Delete selected correction"),
-     DT::dataTableOutput("corrections_table")
-   ),
-   tabPanel(
-     'Check',
-     actionButton("load_unapplied", "Check for unapplied corrections"),
-     DT::dataTableOutput("unapplied_corrections_table")
-   ),
-   tabPanel("Outliers stats",
-     sidebarLayout(
-       sidebarPanel(
-         width = 3,
-         selectInput("bygroup",
-           "Choose a grouping:",
-           c('reporter', 'item', 'reporter and item')),
-         actionButton("xgo", "Calculate stats")
-       ),
-        
-       mainPanel(
-         DT::dataTableOutput("xstats")
-       )
-     )
-   ),
-   tabPanel(
-     'Other graphs',
-       fluidRow(
-         column(6,
-           selectInput("choose_misc_graph",
-           "Choose a graph:",
-           c('', 'Heatmap', 'Treemap'))
-         ),
-         # XXX In theory this button should generate the graph
-         # when it's pressed, but the graph is generated each time
-         # the type of graph is chosen...
-         column(6,
-           actionButton("gomisc", "Generate graph")
-         )
-       ),
-       fluidRow(
-         column(12,
-           highcharter::highchartOutput("misc_graph", height = "800px")
-         )
-       )
-   ),
-  ### tabPanel('Mapping', 
-  ###          fluidPage(
-  ###   fluidRow(
-  ###  column(4,
-  ###    #fileInput('mapping_file', 'Choose file', accept = c('text/csv', 'text/comma-separated-values,text/plain', '.csv'))
-  ###    fileInput('mapping_file', 'Choose file', accept = '.xlsx')
-  ###  ),
-  ###  column(4,
-  ###     downloadButton('down_mapped', 'Download mappped codes')
-  ###    ),
-  ###  column(4,
-  ###    downloadButton('down_unmapped', 'Download unmapped codes')
-  ###  )
-  ###),
-  ###fluidRow(
-  ###  column(12,
-  ###    DT::dataTableOutput('mapping')
-  ###  )  
-  ###)
-  ###   #fileInput('mapping_file', 'Choose file', accept = c('text/csv', 'text/comma-separated-values,text/plain', '.csv')),
-  ###   #downloadButton('down_mapping', 'Download mapping'),
-  ###   #rHandsontableOutput('mapping')
-  ###)
-  ### ),
-  ## tabPanel('module/FAOSTAT flows', 
-  ##          htmlOutput('myiframe1')
-  ##          ),
-   tabPanel('Help', 
-     HTML(markdown::markdownToHTML(help_file, fragment.only = TRUE))
-   ),
-   #tabPanel('test_qty', htmlOutput("test_qty")),
-   #tabPanel('test_value', htmlOutput("test_value")),
-   #tabPanel('test_uv', htmlOutput("test_uv")),
-   #tabPanel('test_all', htmlOutput("test_all")),
-   tabPanel('debug', htmlOutput("debug"))
-   #tabPanel('test', conditionalPanel(condition = paste0('["', paste(valid_analysts, collapse='", "'), '"]', '.indexOf(input.username) !== -1'), tableOutput("debug")))
-  )
+    tabPanel('Total outliers',
+      HTML("<strong>Below you can find the outliers found in the TOTAL trade SWS dataset for the selected country, currently in the total trade dataset in SWS.</strong>
+           <ul>
+           <li><q>old</q> is the average before year 2014 (excluded)</li>
+           <li><q>new</q> is the average after year 2014 (included)</li>
+           <li><q>min</q> is the minimum after year 2014 (included)</li>
+           <li><q>max</q> is the maximum after year 2014 (included)</li>
+           <li><q>ratio_new_old</q> is <q>new</q>/<q>old</q></li>
+           <li><q>ratio_min_old</q> is <q>min</q>/<q>old</q></li>
+           <li><q>ratio_max_old</q> is <q>max</q>/<q>old</q></li>
+           </ul>
+           <p>Click on one row to see the plots of quantity/value/unit value and the outliers found (shown with a blue point, only for years >= 2014).</p>
+           "),
+      DT::dataTableOutput("tot_outliers_tab"),
+      plotOutput("tot_outliers_plot", height = "800px", width = "90%")
+    ),
+    tabPanel('Raw data / MAP',
+      h1(span("Bilateral"), span("raw", style = "color: red;"), span("data (ONLY 2014-2018)")),
+      HTML("<p></p><strong>In the following table you can see the RAW bilateral SHIPMENTS corresponding to the bilateral flow you chose in the datatable.</strong><p></p>"),
+      DT::dataTableOutput("rawdata"),
+      h1("Change the CPC and FCL code"),
+      HTML("<p></p><strong>In the small table below you can change the CPC/FCL code assigned to the HS code above by clicking on a cell and entering a new code. NOTE: it will change the code for ALL bilateral flows attached to that HS, not only the one partner-specific that you see above.</strong><p></p>"),
+      rHandsontableOutput("changelink"),
+      actionButton("applychangelink", "Save change to trademap", style = "background-color: lightgreen; font-weight: bold;"),
+      h1("CPC codes assigned to the HS 6 digits in other countries"),
+      HTML("<p></p><strong>Below &darr; there are (eventually) other CPC codes assigned to other HS code starting with the same 6 digits as the code above &uarr;</strong><p></p>"),
+      DT::dataTableOutput("maphelper")
+    ),
+    tabPanel('Datatable',
+      fluidRow(
+        column(6,
+          selectInput('outlier_method',
+            'Choose an outlier detection method:',
+            c('Fixed threshold', 'Variable threshold', '100 median', 'Boxplot', 'All data')
+          )
+        ),
+        column(6,
+          actionButton("show_full_table", "Show table")
+        )
+        #checkboxInput("link_new_window", "Open links in new tab", FALSE),
+      ),
+      fluidRow(
+        column(12,
+          DT::dataTableOutput("full_out_table")
+        )
+      )
+    ),
+    #tabPanel('HS codes', tableOutput("hsdrilldown")),
+    tabPanel(
+      'Corrections',
+      conditionalPanel(
+        condition = 'input.okCorrection > 0',
+        verbatimTextOutput("corrections_message")
+      ),
+      # XXX in theory this should be visible only when a first correction
+      # has been confirmed (as above), but it is not doing that
+      actionButton("sync_corrections_table", "Synchronise table"),
+      actionButton("delete_correction", "Delete selected correction"),
+      DT::dataTableOutput("corrections_table")
+    ),
+    tabPanel(
+      'Check',
+      actionButton("load_unapplied", "Check for unapplied corrections"),
+      DT::dataTableOutput("unapplied_corrections_table")
+    ),
+    tabPanel("Outliers stats",
+      sidebarLayout(
+        sidebarPanel(
+          width = 3,
+          selectInput("bygroup",
+            "Choose a grouping:",
+            c('reporter', 'item', 'reporter and item')),
+          actionButton("xgo", "Calculate stats")
+        ),
+         
+        mainPanel(
+          DT::dataTableOutput("xstats")
+        )
+      )
+    ),
+    tabPanel(
+      'Other graphs',
+        fluidRow(
+          column(6,
+            selectInput("choose_misc_graph",
+            "Choose a graph:",
+            c('', 'Heatmap', 'Treemap'))
+          ),
+          # XXX In theory this button should generate the graph
+          # when it's pressed, but the graph is generated each time
+          # the type of graph is chosen...
+          column(6,
+            actionButton("gomisc", "Generate graph")
+          )
+        ),
+        fluidRow(
+          column(12,
+            highcharter::highchartOutput("misc_graph", height = "800px")
+          )
+        )
+    ),
+   ### tabPanel('Mapping', 
+   ###          fluidPage(
+   ###   fluidRow(
+   ###  column(4,
+   ###    #fileInput('mapping_file', 'Choose file', accept = c('text/csv', 'text/comma-separated-values,text/plain', '.csv'))
+   ###    fileInput('mapping_file', 'Choose file', accept = '.xlsx')
+   ###  ),
+   ###  column(4,
+   ###     downloadButton('down_mapped', 'Download mappped codes')
+   ###    ),
+   ###  column(4,
+   ###    downloadButton('down_unmapped', 'Download unmapped codes')
+   ###  )
+   ###),
+   ###fluidRow(
+   ###  column(12,
+   ###    DT::dataTableOutput('mapping')
+   ###  )  
+   ###)
+   ###   #fileInput('mapping_file', 'Choose file', accept = c('text/csv', 'text/comma-separated-values,text/plain', '.csv')),
+   ###   #downloadButton('down_mapping', 'Download mapping'),
+   ###   #rHandsontableOutput('mapping')
+   ###)
+   ### ),
+   ## tabPanel('module/FAOSTAT flows', 
+   ##          htmlOutput('myiframe1')
+   ##          ),
+    tabPanel('Help', 
+      HTML(markdown::markdownToHTML(help_file, fragment.only = TRUE))
+    ),
+    #tabPanel('test_qty', htmlOutput("test_qty")),
+    #tabPanel('test_value', htmlOutput("test_value")),
+    #tabPanel('test_uv', htmlOutput("test_uv")),
+    #tabPanel('test_all', htmlOutput("test_all")),
+    tabPanel('debug', htmlOutput("debug"))
+    #tabPanel('test', conditionalPanel(condition = paste0('["', paste(valid_analysts, collapse='", "'), '"]', '.indexOf(input.username) !== -1'), tableOutput("debug")))
+   )
 }
 
 # XXX 'session' era richiesto per selezionare un tab, se non si ha
@@ -655,6 +823,422 @@ server <- function(input, output, session) {
         paste("User:", input$cookies$username)
       }
     })
+
+  swsMap <-
+    reactive({
+      SetClientFiles(CONFIG_CERTIFICATES)
+
+      # QA
+      #validate(need(try(GetTestEnvironment(SERVER, input$tokenField)),
+      validate(need(try(GetTestEnvironment("https://hqlqasws1.hq.un.fao.org:8181/sws", "fa33725d-b938-44c2-9932-9ed2513828a8")), # XXX parameter
+                    "Could not connect to the SWS"))
+
+      validate(need(try(!is.null(swsContext.baseRestUrl)),
+                    "The token is invalid"))
+
+      dataReadProgress_tab <- Progress$new(session, min = 0, max = 100)
+
+      dataReadProgress_tab$set(value = 100, message = "Loading map helper from the SWS")
+
+      on.exit(dataReadProgress_tab$close())
+
+      dat <-
+        ReadDatatable(
+          paste0("ess_trademap_", values$year),
+          where = paste(paste0("hs like '", values$hs6, "%'"), collapse = " OR ")
+        )
+
+      # Cut at HS 6 and summarise, otherwise results can be A LOT
+      dat <-
+        unique(
+          dat[,
+            .(n_reporters = uniqueN(area), reporters = paste(sort(unique(area)), collapse = ", ")),
+            .(hs6 = substr(hs, 1, 6), cpc, fcl, cpc_description, map_src)
+          ]
+        )
+
+      return(dat)
+    })
+
+  swsData <-
+    # credits: Modified version of @sebastian-c's original swsData()
+    reactive({
+
+      # Get main items
+      main_items_flow <-
+        values$db %>%
+        filter(geographicAreaM49Reporter == values$reporter_code, timePointYears >= 2010) %>%
+        group_by(geographicAreaM49Reporter, flow, measuredItemCPC, timePointYears) %>%
+        summarise(
+          qty    = sum(qty, na.rm = TRUE),
+          weight = sum(weight, na.rm = TRUE),
+          value  = sum(value, na.rm = TRUE)
+        ) %>%
+        group_by(geographicAreaM49Reporter, flow, measuredItemCPC) %>%
+        summarise(
+          qty_avg    = mean(qty, na.rm = TRUE),
+          weight_avg = mean(weight, na.rm = TRUE),
+          value_avg  = mean(value, na.rm = TRUE),
+          qty_max    = max(qty, na.rm = TRUE),
+          weight_max = max(weight, na.rm = TRUE),
+          value_max  = max(value, na.rm = TRUE)
+        ) %>%
+        ungroup() %>%
+        tidyr::gather(key, value, -geographicAreaM49Reporter, -flow, -measuredItemCPC) %>%
+        filter(
+          (key %in% c("value_avg", "value_max") & value > 100000) |
+            (key %in% c("qty_avg", "qty_max") & value > 1000)
+        ) %>%
+        group_by(geographicAreaM49Reporter, flow, key) %>%
+        arrange(desc(value)) %>%
+        slice(1:100) %>%
+        ungroup() %>%
+        distinct(flow, measuredItemCPC) %>%
+        setDT()
+
+      SetClientFiles(CONFIG_CERTIFICATES)
+
+      # QA
+      #validate(need(try(GetTestEnvironment(SERVER, input$tokenField)),
+      validate(need(try(GetTestEnvironment("https://hqlqasws1.hq.un.fao.org:8181/sws", "fa33725d-b938-44c2-9932-9ed2513828a8")), # XXX parameter
+                    "Could not connect to the SWS"))
+
+      validate(need(try(!is.null(swsContext.baseRestUrl)),
+                    "The token is invalid"))
+
+      dataReadProgress <- Progress$new(session, min = 0, max = 100)
+
+      dataReadProgress$set(value = 100, message = "Loading your data from the SWS")
+
+      on.exit(dataReadProgress$close())
+
+      DIM_GEO <- values$reporter_code
+      DIM_ITEM <- unique(main_items_flow$measuredItemCPC)
+      DIM_ELEM_TRADE <- c("5607", "5608", "5609", "5610", "5622", "5630",
+                          "5637", "5638", "5639", "5907", "5908", "5909",
+                          "5910", "5922", "5930", "5938", "5939")
+
+      DIM_TIME <- as.character(2010:2018)
+
+      key_trade <-
+        DatasetKey(
+          domain     = "trade",
+          dataset    = "total_trade_cpc_m49",
+          dimensions =
+            list(
+              geographicAreaM49    = Dimension(name = "geographicAreaM49",    keys = DIM_GEO),
+              measuredElementTrade = Dimension(name = "measuredElementTrade", keys = DIM_ELEM_TRADE),
+              measuredItemCPC      = Dimension(name = "measuredItemCPC",      keys = DIM_ITEM),
+              timePointYears       = Dimension(name = "timePointYears",       keys = DIM_TIME)
+            )
+        )
+
+      data_trade_sws <-
+        tryCatch(
+          GetData(key_trade),
+          error = function(e) stop(safeError("Something went wrong when downloading TRADE data."))
+        )
+
+      data_trade_local <- readRDS(file.path(LOCAL_TRADE_FILES, paste0(DIM_GEO, ".rds")))
+
+      data_trade_local <- data_trade_local[measuredElementTrade %in% DIM_ELEM_TRADE]
+
+      data_trade_local <- data_trade_local[timePointYears < DIM_TIME[1]]
+      data_trade_local <- data_trade_local[timePointYears >= 1990]
+
+      data_trade <- rbind(data_trade_local, data_trade_sws)
+
+      data_trade <- data_trade[order(geographicAreaM49, measuredItemCPC, measuredElementTrade, timePointYears)]
+
+      data_trade[, flow := ifelse(substr(measuredElementTrade, 1, 2) == "56", 1, 2)]
+
+      data_trade <- data_trade[main_items_flow, on = c("flow", "measuredItemCPC")]
+
+      data_trade[, flow := NULL]
+
+      return(data_trade)
+    })
+
+  output$tot_outliers_tab <-
+    DT::renderDataTable({
+      d <- copy(swsData())
+
+      dataReadProgress_out <- Progress$new(session, min = 0, max = 100)
+
+      dataReadProgress_out$set(value = 100, message = "Checking for outliers")
+
+      on.exit(dataReadProgress_out$close())
+
+      d <- d[CJ(geographicAreaM49 = unique(d$geographicAreaM49), measuredItemCPC = unique(d$measuredItemCPC), measuredElementTrade = unique(d$measuredElementTrade), timePointYears = as.character(min(d$timePointYears):max(d$timePointYears))), on = c("geographicAreaM49", "measuredItemCPC", "measuredElementTrade", "timePointYears")]
+
+      d[,
+        `:=`(
+          n_all  = sum(!is.na(Value)),
+          n_pre  = sum(!is.na(Value[timePointYears < 2014])),
+          n_post = sum(!is.na(Value[timePointYears >= 2014]))
+        ),
+        .(geographicAreaM49, measuredElementTrade, measuredItemCPC)
+      ]
+
+      d <- d[n_post > 0]
+
+      d[, year := as.numeric(timePointYears)]
+
+      d[
+        n_post > 1 & n_pre > 1,
+        c("predict", "lower", "upper") := compute_loess(.SD, "Value", thresholds = "se"),
+        .(geographicAreaM49, measuredItemCPC, measuredElementTrade)
+      ]
+
+      d[,
+        outlier :=
+          !(n_post > 1 & n_pre > 1) |
+          (timePointYears >= 2014 & # XXX parameter
+          !data.table::between(Value, lower, upper))
+      ]
+
+      d[,
+        select := any(outlier == TRUE),
+        .(geographicAreaM49, measuredItemCPC, substr(measuredElementTrade, 1, 2))
+      ]
+
+      d <- d[select == TRUE][, select := NULL]
+
+      d <-
+        d[,
+          .(
+            old = mean(Value[timePointYears < 2014]),
+            new = mean(Value[timePointYears >= 2014]),
+            min = min(Value[timePointYears >= 2014]),
+            max = max(Value[timePointYears >= 2014])
+          ),
+          .(geographicAreaM49, measuredItemCPC, measuredElementTrade)
+        ]
+
+      d <-
+        d[,
+          `:=`(
+            ratio_new_old = new / old,
+            ratio_min_old = min / old,
+            ratio_max_old = max / old
+          )
+        ]
+
+      d <- d[!grepl("^5.[32]\\d$", measuredElementTrade)]
+
+      d <- d[order(-new)]
+
+      values$dbout_total <- d
+
+      DT::datatable(d, rownames = FALSE, selection = "single") %>%
+        DT::formatCurrency(c('old', 'new', 'min', 'max'), digits = 0, currency = '') %>%
+        DT::formatCurrency(c('ratio_new_old', 'ratio_min_old', 'ratio_max_old'), digits = 2, currency = '')
+    })
+
+
+  output$tot_outliers_plot <-
+    renderPlot({
+
+      req(input$tot_outliers_tab_rows_selected)
+
+      r <- input$tot_outliers_tab_rows_selected
+
+      item <- values$dbout_total$measuredItemCPC[r]
+
+      flowcode <- substr(values$dbout_total$measuredElementTrade[r], 1, 2)
+
+      d <- swsData()[measuredItemCPC == item & substr(measuredElementTrade, 1, 2) == flowcode]
+
+      d <- d[CJ(measuredElementTrade = unique(d$measuredElementTrade), timePointYears = as.character(min(d$timePointYears):max(d$timePointYears))), on = c("measuredElementTrade", "timePointYears")]
+
+      d[, year := as.numeric(timePointYears)]
+
+      d[,
+        c("predict", "lower", "upper") := compute_loess(.SD, "Value", thresholds = "se"),
+        .(geographicAreaM49, measuredItemCPC, measuredElementTrade)
+      ]
+
+      d[, outlier := NA_real_]
+
+      d[
+        timePointYears >= 2014 & # XXX parameter
+          !data.table::between(Value, lower, upper),
+        outlier := Value
+      ]
+
+      ggplot(d, aes(x = timePointYears, group = 1)) +
+        geom_line(aes(y = Value), size = 2) +
+        geom_line(aes(y = predict), color = "red", size = 1.5, linetype = "dashed") +
+        geom_point(aes(y = outlier), size = 5, colour = "blue") +
+        facet_wrap(~measuredElementTrade, scales = "free", ncol = 1) +
+        geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2)
+
+    })
+
+  #output$trademap <-
+  #  DT::renderDataTable({
+  #    req(values$year)
+
+  #    readRDS(file.path(TRADEMAP_DIR, paste0("rawdata_", values$year, ".rds")))
+  #  })
+
+  output$maphelper <-
+    DT::renderDataTable({
+      req(values$hs6)
+
+      d <- swsMap()
+
+      DT::datatable(d, rownames = FALSE)
+    })
+
+
+  output$rawdata <-
+    DT::renderDataTable({
+      req(values$year)
+
+      dataReadProgress_trademap <- Progress$new(session, min = 0, max = 100)
+
+      dataReadProgress_trademap$set(value = 100, message = "Downloading detailed tariff line")
+
+      on.exit(dataReadProgress_trademap$close())
+
+      d <- readRDS(file.path(TRADEMAP_DIR, paste0(values$year, "/", values$reporter_code, ".rds")))
+
+      setDT(d)
+
+      res <- d[reporter == values$reporter_code & partner == values$prt_code & flow == values$flow & cpc == values$it_code]
+
+      values$hs <- unique(res$hs)
+
+      res[, hs6 := substr(hs, 1, 6)]
+
+      res <- merge(res, hs_descr, by.x = "hs6", by.y = "hs", all.x = TRUE)
+
+      values$hs6 <- unique(res$hs6)
+
+      values$current_data <- data.table(hs = unique(res$hs), cpc = NA_character_, fcl = NA_character_)
+
+      res[, hs6 := NULL]
+
+      DT::datatable(res[], rownames = FALSE, selection = "single")
+    })
+
+  output$changelink <-
+    renderRHandsontable({
+      req(values$current_data)
+
+      d <- rhandsontable(values$current_data, readOnly = FALSE)
+
+      d <- hot_col(d, col = "hs", readOnly = TRUE)
+
+      return(d)
+    })
+
+  observeEvent(
+    input$applychangelink,
+    {
+      if (!anyNA(values$current_data)) {
+        SetClientFiles(CONFIG_CERTIFICATES)
+
+        # QA
+        #validate(need(try(GetTestEnvironment(SERVER, input$tokenField)),
+        validate(need(try(GetTestEnvironment("https://hqlqasws1.hq.un.fao.org:8181/sws", "fa33725d-b938-44c2-9932-9ed2513828a8")), # XXX parameter
+                      "Could not connect to the SWS"))
+
+        validate(need(try(!is.null(swsContext.baseRestUrl)),
+                      "The token is invalid"))
+
+        dataReadProgress_tab <- Progress$new(session, min = 0, max = 100)
+
+        dataReadProgress_tab$set(value = 100, message = "Loading map helper from the SWS")
+
+        on.exit(dataReadProgress_tab$close())
+
+        changeset <- Changeset(paste0("ess_trademap_", values$year))
+
+        dat <-
+          ReadDatatable(
+            paste0("ess_trademap_", values$year),
+            where = paste0("hs IN (", paste(shQuote(values$hs, type = "sh"), collapse = ", "), ") AND area IN ('", values$reporter_code, "') AND flow IN (", values$flow, ")"),
+            readOnly = FALSE
+          )
+
+        orig_names <- copy(names(dat))
+
+        AddDeletions(changeset, dat)
+
+        Finalise(changeset)
+
+        dat_new <- copy(values$current_data)
+
+        setDT(dat_new)
+
+        dat_new[, hs6 := substr(hs, 1, 6)]
+
+        dat_new <- merge(dat_new, hs_descr, by.x = "hs6", by.y = "hs", all.x = TRUE)
+
+        cpc_descr <- db %>% select(cpc = measuredItemCPC, cpc_description = item_name) %>% distinct() %>% setDT()
+
+        dat_new <- merge(dat_new, cpc_descr, by = "cpc", all.x = TRUE)
+
+        setnames(dat_new, c("cpc", "fcl", "description", "cpc_description"), c("cpc_new", "fcl_new", "hs_description_new", "cpc_description_new"))
+
+        dat <- merge(dat, dat_new, by = "hs", all.x = TRUE)
+
+        dat[
+          is.na(cpc_new) & !is.na(fcl_new),
+          `:=`(
+            cpc = cpc_new,
+            fcl = fcl_new,
+            hs_description = hs_description_new,
+            cpc_description = cpc_description_new
+          )
+        ]
+
+        dat <- dat[, orig_names, with = FALSE]
+
+        dat[, `__id` := NULL]
+        dat[, `__ts` := NULL]
+
+        AddInsertions(changeset, dat_new)
+
+        Finalise(changeset)
+      }
+    }
+  )
+
+
+  observeEvent(
+    input$changelink$changes$changes[[1]][[1]],
+    {
+      d <- as.data.frame(hot_to_r(input$changelink))
+
+      if (input$changelink$changes$changes[[1]][[2]] == 1) { # CPC
+        if (input$changelink$changes$changes[[1]][[4]] %in% fcl_2_cpc$cpc) {
+          d$fcl[d$cpc == input$changelink$changes$changes[[1]][[4]]] <-
+            fcl_2_cpc$fcl[fcl_2_cpc$cpc == input$changelink$changes$changes[[1]][[4]]]
+        } else {
+          d$fcl[d$cpc == input$changelink$changes$changes[[1]][[4]]] <- NA_character_
+          d$cpc[d$cpc == input$changelink$changes$changes[[1]][[4]]] <- NA_character_
+        }
+
+      } else if (input$changelink$changes$changes[[1]][[2]] == 2) {
+        if (input$changelink$changes$changes[[1]][[4]] %in% fcl_2_cpc$fcl) {
+          d$cpc[d$fcl == input$changelink$changes$changes[[1]][[4]]] <-
+            fcl_2_cpc$cpc[fcl_2_cpc$fcl == input$changelink$changes$changes[[1]][[4]]]
+        } else {
+          d$cpc[d$fcl == input$changelink$changes$changes[[1]][[4]]] <- NA_character_
+          d$fcl[d$fcl == input$changelink$changes$changes[[1]][[4]]] <- NA_character_
+        }
+
+        d$cpc[d$cpc == "NA"] <- NA_character_
+        d$fcl[d$fcl == "NA"] <- NA_character_
+
+      }
+
+      values$current_data <- d
+    }
+  )
 
   choose_data <- function(data = values$db, .flow = NA, .reporter = NA,
                           .partner = NA, .item = NA) {
@@ -901,9 +1485,6 @@ server <- function(input, output, session) {
     )
   }
 
-
-
-
   mutate_db_imputed <- function(data = NA, to_impute = NA, correct = NA,
                                 original = NA, variable = NA) {
 
@@ -984,6 +1565,7 @@ server <- function(input, output, session) {
     remove_old            = FALSE,
     dup_correction        = FALSE,
     db                    = NULL,
+    dbout_total           = NULL,
     mydb                  = NULL,
     mapped_links          = NA,
     username              = NA,
@@ -994,9 +1576,15 @@ server <- function(input, output, session) {
     unmapped_links        = NA,
     valid_user            = FALSE,
     reporter              = NA,
+    year                  = NA,
+    reporter_code         = NA,
     partner               = NA,
+    prt_code              = NA,
     item                  = NA,
+    it_code               = NA,
     flow                  = NA,
+    hs                    = NA,
+    hs6                   = NA,
     choose_correction     = NA,
     selected              = NA,
     year2correct          = NA
@@ -1009,6 +1597,7 @@ server <- function(input, output, session) {
 
       if (input$reporter_start != "") {
         rep_code <- (filter(db, reporter_name == input$reporter_start) %>% distinct(geographicAreaM49Reporter))[[1]]
+        values$reporter_code <- rep_code
 
         values$corrections_file <- file.path(corrections_dir, rep_code, 'corrections_table.rds')
 
@@ -1574,8 +2163,11 @@ server <- function(input, output, session) {
       values$selected <- input$full_out_table_rows_selected
       values$reporter <- xxx$reporter_name[idx]
       values$partner  <- xxx$partner_name[idx]
+      values$prt_code <- xxx$geographicAreaM49Partner[idx]
       values$item     <- xxx$item_name[idx]
+      values$it_code  <- xxx$measuredItemCPC[idx]
       values$flow     <- xxx$flow[idx]
+      values$year     <- xxx$timePointYears[idx]
     }
   )
 
@@ -1665,7 +2257,8 @@ server <- function(input, output, session) {
             escape    = -2,
             options   = list(pageLength = 50, dom = 'ptip', stateSave = TRUE, serverSide = TRUE),
             filter    = 'top',
-            selection = 'single'
+            selection = 'single',
+            rownames  = FALSE
             #$("#go").click();
             #$("#partner")[0].textContent = "Colombia";
             #$("#partner option")[0].value = "Colombia";
@@ -1954,6 +2547,21 @@ server <- function(input, output, session) {
         '<br>',
         'values$selected =',
         values$selected,
+        '<br>',
+        'values$prt_code =',
+        values$prt_code,
+        '<br>',
+        'values$it_code =',
+        values$it_code,
+        '<br>',
+        'values$year =',
+        values$year,
+        '<br>',
+        'values$hs =',
+        values$hs,
+        '<br>',
+        'values$hs6 =',
+        values$hs6,
         '<br>',
         'input$a_state =',
         str(input$full_out_table_state),
