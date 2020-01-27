@@ -50,8 +50,8 @@ if (app_mode == 'production') {
 } else if (app_mode == 'test') {
   corrections_dir <- file.path(persistent_files, 'test')
   db_file         <- file.path(persistent_files, 'test', 'db.rds')
-  CONFIG_CERTIFICATES <- "C:/Users/mongeau.FAODOMAIN/Documents/certificates/qa"
-  LOCAL_TRADE_FILES <- "C:/Users/mongeau.FAODOMAIN/Dropbox/FAO/FBS/production_outliers/data/trade"
+  CONFIG_CERTIFICATES <- "C:/Users/Mongeau/Documents/certificates/qa"
+  LOCAL_TRADE_FILES <- "C:/Users/Mongeau/Dropbox/FAO/FBS/production_outliers/data/trade"
   TRADEMAP_DIR <- "r:/trade/validation_tool_files/rawtrade"
 } else {
   stop('The "mode" should be either "test" or "production"')
@@ -90,6 +90,13 @@ names(reporters_comtrade) <- unlist(lapply(RJSONIO::fromJSON(comtrade_reporter_f
 partners_comtrade <- unlist(lapply(RJSONIO::fromJSON(comtrade_partner_file)$results, function(x) x[['id']]))
 names(partners_comtrade) <- unlist(lapply(RJSONIO::fromJSON(comtrade_partner_file)$results, function(x) x[['text']]))
 
+DEFAULT_THRESHOLD   <- 1000L
+DEFAULT_RATIO_LOW   <- 0.25 # one fourth lower
+DEFAULT_RATIO_HIGH  <- 4    # four times higher
+DEFAULT_GROWTH_LOW  <- -0.5 # -50%
+DEFAULT_GROWTH_HIGH <- 1    # +100%
+
+
 # rollavg() is a rolling average function that uses computed averages
 # to generate new values if there are missing values (and FOCB/LOCF).
 # I.e.:
@@ -127,101 +134,99 @@ rollavg <- function(x, order = 3) {
   return(x)
 }
 
+sws_datatables <-
+  {
+    SetClientFiles(CONFIG_CERTIFICATES)
 
-# credits: https://gist.github.com/kylebgorman/6444612
+    # QA
+    #validate(need(try(GetTestEnvironment(SERVER, input$tokenField)),
+    validate(need(try(GetTestEnvironment("https://hqlqasws1.hq.un.fao.org:8181/sws", "1d9f9eb2-36f5-403c-bda2-6910408a3c48")), # XXX parameter
+                  "Could not connect to the SWS"))
 
-aicc.loess <- function(fit) {
-    # compute AIC_C for a LOESS fit, from:
-    # 
-    # Hurvich, C.M., Simonoff, J.S., and Tsai, C. L. 1998. Smoothing 
-    # parameter selection in nonparametric regression using an improved 
-    # Akaike Information Criterion. Journal of the Royal Statistical 
-    # Society B 60: 271–293.
-    # 
-    # @param fit        loess fit
-    # @return           'aicc' value
-    stopifnot(inherits(fit, 'loess'))
-    # parameters
-    n <- fit$n
-    trace <- fit$trace.hat
-    sigma2 <- sum(resid(fit) ^ 2) / (n - 1)
-    return(log(sigma2) + 1 + (2 * (trace + 1)) / (n - trace - 2))
-}
+    validate(need(try(!is.null(swsContext.baseRestUrl)),
+                  "The token is invalid"))
 
-autoloess <- function(data = NA, fit, span = c(.1, .9), myform) {
-    # compute loess fit which has span minimizes AIC_C
-    # 
-    # @param fit        loess fit; span parameter value doesn't matter
-    # @param span       a two-value vector representing the minimum and 
-    #                   maximum span values
-    # @return           loess fit with span minimizing the AIC_C function
-    stopifnot(inherits(fit, 'loess'), length(span) == 2)
-    # loss function in form to be used by optimize
-    f <- function(span) aicc.loess(update(data = data, fit, myform, span = span))
-    # find best loess according to loss function
-    return(update(fit, span=optimize(f, span)$minimum))
-}
+    #dataReadProgress_swstab <- Progress$new(session, min = 0, max = 100)
 
-# / https://gist.github.com/kylebgorman/6444612
+    #dataReadProgress_swstab$set(value = 100, message = "Loading map helper from the SWS")
 
+    #on.exit(dataReadProgress_swstab$close())
 
-# Note: forecast::supsmu can be used instead of the optimally chosen LOESS,
-# only in the case no SE is required (thresholds = "bootstrap*")
-compute_loess <- function(data, var, thresholds = "se") {
-  mypredict <- NA_real_
-  mylower   <- NA_real_
-  myupper   <- NA_real_
+    outlier_thresholds <- ReadDatatable("trade_outlier_country_thresholds")
+    stopifnot(nrow(outlier_thresholds) > 0)
 
-  # Remove initial missing observations (add them at the end)
-  init_miss <- cumsum(!is.na(data[[var]]))
-  data <- data[init_miss > 0]
+    do_not_check <- ReadDatatable("ess_trade_exclude_outlier_check")
+    stopifnot(nrow(do_not_check) > 0)
 
-  if (!all(is.na(data[data$year >= 2000][[var]]) | dplyr::near(data[data$year >= 2000][[var]], 0))) {
+    list(outlier_thresholds = outlier_thresholds, do_not_check = do_not_check)
+  }
 
-    myform     <- as.formula(paste(var, "year", sep = "~"))
-    init.loess <- loess(data = data, myform, span = 0.9)
-    myloess    <- autoloess(data = data, init.loess, span = c(0.1, 0.9), myform)
-    pred       <- predict(newdata = data, myloess, se = TRUE)
-    mypredict  <- pred$fit
-    myspan     <- myloess$pars$span
-
-    se_thresh <- ifelse(grepl(".3..", var), 3, 5)
-
-    if (thresholds == "se") {
-      myse.fit   <- pred$se.fit
-      mylower    <- mypredict - se_thresh * myse.fit
-      myupper    <- mypredict + se_thresh * myse.fit
-    } else if (thresholds == "iqr") {
-      myresid <- data[[var]] - mypredict
-      residq <- quantile(myresid, prob = c(0.25, 0.75), na.rm = TRUE)
-      mylower <- mypredict + residq[1] - 1.5 * (residq[2] - residq[1])
-      myupper <- mypredict + residq[2] + 1.5 * (residq[2] - residq[1])
-    } else if (thresholds == "bootstrap") {
-      myresid <- data[[var]] - mypredict
-      set.seed(1)
-      boot <- quantile(sample(abs(myresid), 1000, replace = TRUE), 0.9, na.rm = TRUE)
-      mylower <- mypredict - boot
-      myupper <- mypredict + boot
-    } else if (thresholds == "bootstraprel") {
-      myresid <- data[[var]] / mypredict
-      set.seed(1)
-      boot <- quantile(sample(abs(myresid), 1000, replace = TRUE), 0.9, na.rm = TRUE)
-      mylower <- mypredict / boot
-      myupper <- mypredict * boot
+send_mail <- function(from = NA, to = NA, subject = NA,
+                      body = NA, remove = FALSE) {
+  
+  if (missing(from)) from <- 'no-reply@fao.org'
+  
+  if (missing(to)) {
+    if (exists('swsContext.userEmail')) {
+      to <- swsContext.userEmail
     }
   }
-
-  if (any(init_miss == 0)) {
-    m <- rep(NA_real_, length(init_miss[init_miss == 0]))
-    mypredict <- c(m, mypredict)
-    mylower   <- c(m, mylower)
-    myupper   <- c(m, myupper)
+  
+  if (is.null(to)) {
+    stop('No valid email in `to` parameter.')
   }
-
-  return(list(mypredict, mylower, myupper))
+  
+  if (missing(subject)) stop('Missing `subject`.')
+  
+  if (missing(body)) stop('Missing `body`.')
+  
+  if (length(body) > 1) {
+    body <-
+      sapply(
+        body,
+        function(x) {
+          if (file.exists(x)) {
+            # https://en.wikipedia.org/wiki/Media_type 
+            file_type <-
+              switch(
+                tolower(sub('.*\\.([^.]+)$', '\\1', basename(x))),
+                txt  = 'text/plain',
+                csv  = 'text/csv',
+                png  = 'image/png',
+                jpeg = 'image/jpeg',
+                jpg  = 'image/jpeg',
+                gif  = 'image/gif',
+                xls  = 'application/vnd.ms-excel',
+                xlsx = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                doc  = 'application/msword',
+                docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                pdf  = 'application/pdf',
+                zip  = 'application/zip',
+                # https://stackoverflow.com/questions/24725593/mime-type-for-serialized-r-objects
+                rds  = 'application/octet-stream'
+              )
+            
+            if (is.null(file_type)) {
+              stop(paste(tolower(sub('.*\\.([^.]+)$', '\\1', basename(x))),
+                         'is not a supported file type.'))
+            } else {
+              return(sendmailR:::.file_attachment(x, basename(x), type = file_type))
+            }
+            
+            if (remove) {
+              unlink(x)
+            }
+          } else {
+            return(x)
+          }
+        }
+      )
+  } else if (!is.character(body)) {
+    stop('`body` should be either a string or a list.')
+  }
+  
+  sendmailR::sendmail(from, to, subject, as.list(body))
 }
-
-
 
 powers <- function(to.check, benchmark) {
 
@@ -830,7 +835,7 @@ server <- function(input, output, session) {
 
       # QA
       #validate(need(try(GetTestEnvironment(SERVER, input$tokenField)),
-      validate(need(try(GetTestEnvironment("https://hqlqasws1.hq.un.fao.org:8181/sws", "fa33725d-b938-44c2-9932-9ed2513828a8")), # XXX parameter
+      validate(need(try(GetTestEnvironment("https://hqlqasws1.hq.un.fao.org:8181/sws", "1d9f9eb2-36f5-403c-bda2-6910408a3c48")), # XXX parameter
                     "Could not connect to the SWS"))
 
       validate(need(try(!is.null(swsContext.baseRestUrl)),
@@ -900,7 +905,7 @@ server <- function(input, output, session) {
 
       # QA
       #validate(need(try(GetTestEnvironment(SERVER, input$tokenField)),
-      validate(need(try(GetTestEnvironment("https://hqlqasws1.hq.un.fao.org:8181/sws", "fa33725d-b938-44c2-9932-9ed2513828a8")), # XXX parameter
+      validate(need(try(GetTestEnvironment("https://hqlqasws1.hq.un.fao.org:8181/sws", "1d9f9eb2-36f5-403c-bda2-6910408a3c48")), # XXX parameter
                     "Could not connect to the SWS"))
 
       validate(need(try(!is.null(swsContext.baseRestUrl)),
@@ -944,11 +949,9 @@ server <- function(input, output, session) {
       data_trade_local <- data_trade_local[measuredElementTrade %in% DIM_ELEM_TRADE]
 
       data_trade_local <- data_trade_local[timePointYears < DIM_TIME[1]]
-      data_trade_local <- data_trade_local[timePointYears >= 1990]
+      data_trade_local <- data_trade_local[timePointYears >= 2000]
 
       data_trade <- rbind(data_trade_local, data_trade_sws)
-
-      data_trade <- data_trade[order(geographicAreaM49, measuredItemCPC, measuredElementTrade, timePointYears)]
 
       data_trade[, flow := ifelse(substr(measuredElementTrade, 1, 2) == "56", 1, 2)]
 
@@ -956,11 +959,21 @@ server <- function(input, output, session) {
 
       data_trade[, flow := NULL]
 
+      data_trade <- data_trade[order(geographicAreaM49, measuredItemCPC, measuredElementTrade, timePointYears)]
+
       return(data_trade)
     })
 
   output$tot_outliers_tab <-
     DT::renderDataTable({
+
+      outlier_thresholds <- sws_datatables$outlier_thresholds
+
+      do_not_check <- sws_datatables$do_not_check
+ 
+      # XXX
+      interval <- 2015:2017
+
       d <- copy(swsData())
 
       dataReadProgress_out <- Progress$new(session, min = 0, max = 100)
@@ -969,43 +982,86 @@ server <- function(input, output, session) {
 
       on.exit(dataReadProgress_out$close())
 
-      d <- d[CJ(geographicAreaM49 = unique(d$geographicAreaM49), measuredItemCPC = unique(d$measuredItemCPC), measuredElementTrade = unique(d$measuredElementTrade), timePointYears = as.character(min(d$timePointYears):max(d$timePointYears))), on = c("geographicAreaM49", "measuredItemCPC", "measuredElementTrade", "timePointYears")]
+      d <- d[CJ(
+                geographicAreaM49    = unique(d$geographicAreaM49),
+                measuredItemCPC      = unique(d$measuredItemCPC),
+                measuredElementTrade = unique(d$measuredElementTrade),
+                timePointYears       = as.character(min(d$timePointYears):max(d$timePointYears))
+             ),
+             on = c("geographicAreaM49", "measuredItemCPC", "measuredElementTrade", "timePointYears")
+           ]
 
       d[,
         `:=`(
-          n_all  = sum(!is.na(Value)),
-          n_pre  = sum(!is.na(Value[timePointYears < 2014])),
-          n_post = sum(!is.na(Value[timePointYears >= 2014]))
+          meanOld     = mean(Value[timePointYears %in% interval], na.rm = TRUE),
+          growth_rate = Value / shift(Value) - 1
         ),
-        .(geographicAreaM49, measuredElementTrade, measuredItemCPC)
+        by = c("geographicAreaM49", "measuredItemCPC", "measuredElementTrade")
+      ] 
+
+      d[, flow := substr(measuredElementTrade, 1, 2)]
+
+      d <- merge(d, outlier_thresholds, by.x = "geographicAreaM49", by.y = "area", all.x = TRUE)
+
+      d[is.na(threshold), threshold := DEFAULT_THRESHOLD]
+
+      # XXX
+      d[,
+        big_qty := max(meanOld[!grepl("^..[23].$", measuredElementTrade)], na.rm = TRUE) > threshold,
+        by = c("geographicAreaM49", "measuredItemCPC", "flow", "timePointYears")
       ]
 
-      d <- d[n_post > 0]
-
-      d[, year := as.numeric(timePointYears)]
-
-      d[
-        n_post > 1 & n_pre > 1,
-        c("predict", "lower", "upper") := compute_loess(.SD, "Value", thresholds = "se"),
-        .(geographicAreaM49, measuredItemCPC, measuredElementTrade)
-      ]
+      d[, ratio := Value / meanOld]
 
       d[,
         outlier :=
-          !(n_post > 1 & n_pre > 1) |
-          (timePointYears >= 2014 & # XXX parameter
-          !data.table::between(Value, lower, upper))
+          grepl("^..3.$", measuredElementTrade) & # Only UVs
+          !(measuredItemCPC %in% do_not_check$cpc) & # Do not check these
+            (!data.table::between(ratio, DEFAULT_RATIO_LOW, DEFAULT_RATIO_HIGH) | # Carlos'
+            !data.table::between(growth_rate, DEFAULT_GROWTH_LOW, DEFAULT_GROWTH_HIGH)) & # Growth rates
+            big_qty == TRUE & # All need to be big quantities in validated years
+            # FIXME: parameterise
+            timePointYears >= 2014 # Only new years
       ]
+
+      values$data_out <- d
+
+      outList <-
+        d[
+          outlier := TRUE,
+          .(geographicAreaM49, measuredElementTrade, measuredItemCPC, timePointYears,
+           Value, flagObservationStatus, flagMethod, meanOld, growth_rate)
+        ]
+
+      if (faosws::CheckDebug()) {
+        outList_send <- outList[outlier == TRUE]
+
+        outliers_send[, measuredItemCPC := paste0("'", measuredItemCPC)]
+
+        outList_send_file <-
+          tempfile(pattern = "total_trade_outliers_", fileext = ".csv")
+
+        write.csv(outliers_send, outliers_send_file, row.names = FALSE)
+
+		user_email <- users$email[name == values$username]
+
+        send_mail(
+          from    = "SWS-trade-module@fao.org",
+          to      = users$email[name == values$username],
+          subject = paste0("Total trade outliers"),
+          body    = c(paste("The file contains all data points that have either an abnormal unitValue / mean(unitValue) or growth_rate(unitValue). You can check the time series for quantities/values/unitValues by clicking on a row in the 'Total outliers' tab of the Shiny tool."), outList_send_file)
+        )
+      }
 
       d[,
         select := any(outlier == TRUE),
-        .(geographicAreaM49, measuredItemCPC, substr(measuredElementTrade, 1, 2))
+        .(geographicAreaM49, measuredItemCPC, flow)
       ]
 
       d <- d[select == TRUE][, select := NULL]
 
       d <-
-        d[,
+        d[!grepl("^..[23].$", measuredElementTrade),
           .(
             old = mean(Value[timePointYears < 2014]),
             new = mean(Value[timePointYears >= 2014]),
@@ -1023,8 +1079,6 @@ server <- function(input, output, session) {
             ratio_max_old = max / old
           )
         ]
-
-      d <- d[!grepl("^5.[32]\\d$", measuredElementTrade)]
 
       d <- d[order(-new)]
 
@@ -1047,24 +1101,25 @@ server <- function(input, output, session) {
 
       flowcode <- substr(values$dbout_total$measuredElementTrade[r], 1, 2)
 
-      d <- swsData()[measuredItemCPC == item & substr(measuredElementTrade, 1, 2) == flowcode]
+      d <- values$data_out[measuredItemCPC == item & substr(measuredElementTrade, 1, 2) == flowcode]
 
       d <- d[CJ(measuredElementTrade = unique(d$measuredElementTrade), timePointYears = as.character(min(d$timePointYears):max(d$timePointYears))), on = c("measuredElementTrade", "timePointYears")]
 
       d[, year := as.numeric(timePointYears)]
 
-      d[,
-        c("predict", "lower", "upper") := compute_loess(.SD, "Value", thresholds = "se"),
-        .(geographicAreaM49, measuredItemCPC, measuredElementTrade)
-      ]
+      d[, predict := unique(na.omit(meanOld)), by = c("geographicAreaM49", "measuredElementTrade", "measuredItemCPC")]
+      d[, lower := DEFAULT_RATIO_LOW * predict]
+      d[, upper := DEFAULT_RATIO_HIGH * predict]
 
-      d[, outlier := NA_real_]
+      d[, outlier_val := NA_real_]
+      d[outlier == TRUE, outlier_val := Value]
+      d[, outlier := outlier_val]
 
-      d[
-        timePointYears >= 2014 & # XXX parameter
-          !data.table::between(Value, lower, upper),
-        outlier := Value
-      ]
+      d[, remove := all(is.na(Value)), measuredElementTrade]
+
+      d <- d[remove == FALSE]
+
+      d <- rbind(d, d[grepl("^..3.$", measuredElementTrade)][, .(geographicAreaM49, timePointYears, Value = Value / shift(Value) -1, measuredElementTrade = paste0("GROWTH_", measuredElementTrade))], fill = TRUE)
 
       ggplot(d, aes(x = timePointYears, group = 1)) +
         geom_line(aes(y = Value), size = 2) +
@@ -1142,7 +1197,7 @@ server <- function(input, output, session) {
 
         # QA
         #validate(need(try(GetTestEnvironment(SERVER, input$tokenField)),
-        validate(need(try(GetTestEnvironment("https://hqlqasws1.hq.un.fao.org:8181/sws", "fa33725d-b938-44c2-9932-9ed2513828a8")), # XXX parameter
+        validate(need(try(GetTestEnvironment("https://hqlqasws1.hq.un.fao.org:8181/sws", "1d9f9eb2-36f5-403c-bda2-6910408a3c48")), # XXX parameter
                       "Could not connect to the SWS"))
 
         validate(need(try(!is.null(swsContext.baseRestUrl)),
@@ -1573,6 +1628,7 @@ server <- function(input, output, session) {
     imputed_value         = NA,
     imputed_uv            = NA,
     db_imputed            = NA,
+    data_out              = NA,
     unmapped_links        = NA,
     valid_user            = FALSE,
     reporter              = NA,
