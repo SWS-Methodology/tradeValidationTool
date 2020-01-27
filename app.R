@@ -1027,7 +1027,7 @@ server <- function(input, output, session) {
       values$data_out <- d
 
       outList <-
-        d[
+        d[,
           outlier := TRUE,
           .(geographicAreaM49, measuredElementTrade, measuredItemCPC, timePointYears,
            Value, flagObservationStatus, flagMethod, meanOld, growth_rate)
