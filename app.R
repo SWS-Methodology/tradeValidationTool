@@ -77,7 +77,7 @@ hs_descr <- data.table(
 hs_descr_hs6 <-
   hs_descr[
     nchar(hs) == 6,
-    .(hs6 = hs, description = stringr::str_replace(description, '^.* - *', ''))
+    .(hs6 = hs, description = stringr::str_replace(description, '[^-]  *-', ''))
   ]
 
 items_comtrade <- hs_descr$hs
@@ -1165,7 +1165,7 @@ server <- function(input, output, session) {
 
       res[, hs6 := substr(hs, 1, 6)]
 
-      res <- merge(res, hs_descr, by.x = "hs6", by.y = "hs", all.x = TRUE)
+      res <- merge(res, hs_descr_hs6, by = "hs6", all.x = TRUE)
 
       values$hs6 <- unique(res$hs6)
 
@@ -1209,18 +1209,16 @@ server <- function(input, output, session) {
 
         changeset <- Changeset(paste0("ess_trademap_", values$year))
 
-        dat <-
+        dat_orig <-
           ReadDatatable(
             paste0("ess_trademap_", values$year),
             where = paste0("hs IN (", paste(shQuote(values$hs, type = "sh"), collapse = ", "), ") AND area IN ('", values$reporter_code, "') AND flow IN (", values$flow, ")"),
             readOnly = FALSE
           )
 
-        orig_names <- copy(names(dat))
+        orig_names <- copy(names(dat_orig))
 
-        AddDeletions(changeset, dat)
-
-        #Finalise(changeset)
+        dat <- copy(dat_orig)
 
         dat_new <- copy(values$current_data)
 
@@ -1228,7 +1226,7 @@ server <- function(input, output, session) {
 
         dat_new[, hs6 := substr(hs, 1, 6)]
 
-        dat_new <- merge(dat_new, hs_descr, by.x = "hs6", by.y = "hs", all.x = TRUE)
+        dat_new <- merge(dat_new, hs_descr_hs6, by = "hs6", all.x = TRUE)
 
         cpc_descr <- db %>% select(cpc = measuredItemCPC, cpc_description = item_name) %>% distinct() %>% setDT()
 
@@ -1238,35 +1236,50 @@ server <- function(input, output, session) {
 
         dat <- merge(dat, dat_new, by = "hs", all.x = TRUE)
 
-        # NOTE: FCL needs to be defined. If FCL is defined, CPC should be as well
-        dat[
-          !is.na(cpc_new) & !is.na(fcl_new),
-          `:=`(
-            cpc             = cpc_new,
-            fcl             = fcl_new,
-            hs_description  = hs_description_new,
-            cpc_description = cpc_description_new,
-            map_src         = "manual"
-          )
-        ]
+        if (nrow(dat[cpc != cpc_new | fcl != fcl_new]) > 0) {
 
-        dat <- dat[, orig_names, with = FALSE]
+          # NOTE: FCL needs to be defined. If FCL is defined, CPC should be as well
+          dat[
+            !is.na(cpc_new) & !is.na(fcl_new),
+            `:=`(
+              cpc             = cpc_new,
+              fcl             = fcl_new,
+              hs_description  = hs_description_new,
+              cpc_description = cpc_description_new,
+              map_src         = "manual"
+            )
+          ]
 
-        dat[, `__id` := NULL]
-        dat[, `__ts` := NULL]
+          dat <- dat[, orig_names, with = FALSE]
 
-        AddInsertions(changeset, dat)
+          dat[, `__id` := NULL]
+          dat[, `__ts` := NULL]
 
-        Finalise(changeset)
+          added_del <- try(AddDeletions(changeset, dat_orig))
+
+          if (inherits(added_del, "try-error")) {
+            values$link_msg <- "Something went wrong when deleting the link."
+          } else {
+            added_insert <- try(AddInsertions(changeset, dat))
+            if (inherits(added_insert, "try-error")) {
+              values$link_msg <- "Something went wrong when inserting the link."
+            } else {
+              finalised <- try(Finalise(changeset))
+              if (inherits(finalised, "try-error")) {
+                values$link_msg <- "The link was NOT changed."
+              } else {
+                values$link_msg <- "The link was correctly changed. Updated data will appear after nex plugin run."
+              }
+            }
+          }
+        }
       }
-
-      values$link_msg <- "The link was correctly changed. Updated data will appear after nex plugin run."
     }
   )
 
   output$confirm_linkchange <-
     renderUI({
-      p(values$link_msg)
+      p(values$link_msg, style = "font-weight: bolder; color: red;")
     })
 
   observeEvent(
