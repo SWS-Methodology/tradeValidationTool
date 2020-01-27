@@ -951,7 +951,7 @@ server <- function(input, output, session) {
       data_trade_local <- data_trade_local[measuredElementTrade %in% DIM_ELEM_TRADE]
 
       data_trade_local <- data_trade_local[timePointYears < DIM_TIME[1]]
-      data_trade_local <- data_trade_local[timePointYears >= 2000]
+      data_trade_local <- data_trade_local[timePointYears >= 2010]
 
       data_trade <- rbind(data_trade_local, data_trade_sws)
 
@@ -1058,6 +1058,16 @@ server <- function(input, output, session) {
       ]
 
       d <- d[select == TRUE][, select := NULL]
+
+      d[, UV_elem := unique(substr(measuredElementTrade, 4, 4)), by = c("geographicAreaM49", "measuredItemCPC", "flow")]
+
+      # Remove the quantity that do not correspond to UV
+      d <-
+        d[
+          substr(measuredElementTrade, 4, 4) == UV_element | # the element that corresponds to UV
+            substr(measuredElementTrade, 3, 4) == "22" | # monetary value
+            substr(measuredElementTrade, 3, 3) == "3" # UV
+        ]
 
       d <-
         d[!grepl("^..[23].$", measuredElementTrade),
