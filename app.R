@@ -1043,11 +1043,11 @@ server <- function(input, output, session) {
 
         write.csv(outList_send, outList_send_file, row.names = FALSE)
 
-		user_email <- users$email[name == values$username]
+		user_email <- users$email[users$name == values$username]
 
         send_mail(
           from    = "SWS-trade-module@fao.org",
-          to      = users$email[name == values$username],
+          to      = users$email[users$name == values$username],
           subject = paste0("Total trade outliers"),
           body    = c(paste("The file contains all data points that have either an abnormal unitValue / mean(unitValue) or growth_rate(unitValue). You can check the time series for quantities/values/unitValues by clicking on a row in the 'Total outliers' tab of the Shiny tool."), outList_send_file)
         )
