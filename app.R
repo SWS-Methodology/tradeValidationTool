@@ -1027,8 +1027,7 @@ server <- function(input, output, session) {
       values$data_out <- d
 
       outList <-
-        d[,
-          outlier := TRUE,
+        d[outlier == TRUE,
           .(geographicAreaM49, measuredElementTrade, measuredItemCPC, timePointYears,
            Value, flagObservationStatus, flagMethod, meanOld, growth_rate)
         ]
@@ -1049,7 +1048,7 @@ server <- function(input, output, session) {
           from    = "SWS-trade-module@fao.org",
           to      = users$email[users$name == values$username],
           subject = paste0("Total trade outliers"),
-          body    = c(paste("The file contains all data points that have either an abnormal unitValue / mean(unitValue) or growth_rate(unitValue). You can check the time series for quantities/values/unitValues by clicking on a row in the 'Total outliers' tab of the Shiny tool."), outList_send_file)
+          body    = c(paste("The file contains all data points that have either an abnormal unitValue / mean(unitValue) or growth_rate(unitValue). You can check the time series for quantities, values, unitValues by clicking on a row in the 'Total outliers' tab of the Shiny tool."), outList_send_file)
         )
       }
 
