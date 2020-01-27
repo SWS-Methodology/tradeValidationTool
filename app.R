@@ -1061,10 +1061,10 @@ server <- function(input, output, session) {
 
       d[, UV_elem := unique(substr(measuredElementTrade, 4, 4)), by = c("geographicAreaM49", "measuredItemCPC", "flow")]
 
-      # Remove the quantity that do not correspond to UV
+      # Remove the quantity that does not correspond to UV
       d <-
         d[
-          substr(measuredElementTrade, 4, 4) == UV_element | # the element that corresponds to UV
+          substr(measuredElementTrade, 4, 4) == UV_elem | # the element that corresponds to UV
             substr(measuredElementTrade, 3, 4) == "22" | # monetary value
             substr(measuredElementTrade, 3, 3) == "3" # UV
         ]
