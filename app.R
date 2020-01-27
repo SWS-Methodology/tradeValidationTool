@@ -1042,7 +1042,7 @@ server <- function(input, output, session) {
 
         write.csv(outList_send, outList_send_file, row.names = FALSE)
 
-		user_email <- users$email[users$name == values$username]
+        user_email <- users$email[users$name == values$username]
 
         send_mail(
           from    = "SWS-trade-module@fao.org",
