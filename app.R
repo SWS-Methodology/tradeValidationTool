@@ -77,7 +77,7 @@ hs_descr <- data.table(
 hs_descr_hs6 <-
   hs_descr[
     nchar(hs) == 6,
-    .(hs6 = hs, description = stringr::str_replace(description, '[^-]  *-', ''))
+    .(hs6 = hs, description = stringr::str_replace(description, '[^-]+  *-', ''))
   ]
 
 items_comtrade <- hs_descr$hs
@@ -1279,7 +1279,8 @@ server <- function(input, output, session) {
 
   output$confirm_linkchange <-
     renderUI({
-      p(values$link_msg, style = "font-weight: bolder; color: red;")
+      style_col <- ifelse(grepl("correct"), "green;", "red;")
+      p(values$link_msg, style = paste("font-weight: bolder; color:", style_color))
     })
 
   observeEvent(
