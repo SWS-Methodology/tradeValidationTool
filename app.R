@@ -528,6 +528,7 @@ ui <- function(request) {
       HTML("<p></p><strong>In the small table below you can change the CPC/FCL code assigned to the HS code above by clicking on a cell and entering a new code. NOTE: it will change the code for ALL bilateral flows attached to that HS, not only the one partner-specific that you see above.</strong><p></p>"),
       rHandsontableOutput("changelink"),
       actionButton("applychangelink", "Save change to trademap", style = "background-color: lightgreen; font-weight: bold;"),
+      uiOutput("confirm_linkchange"),
       h1("CPC codes assigned to the HS 6 digits in other countries"),
       HTML("<p></p><strong>Below &darr; there are (eventually) other CPC codes assigned to other HS code starting with the same 6 digits as the code above &uarr;</strong><p></p>"),
       DT::dataTableOutput("maphelper")
@@ -1219,7 +1220,7 @@ server <- function(input, output, session) {
 
         AddDeletions(changeset, dat)
 
-        Finalise(changeset)
+        #Finalise(changeset)
 
         dat_new <- copy(values$current_data)
 
@@ -1237,13 +1238,15 @@ server <- function(input, output, session) {
 
         dat <- merge(dat, dat_new, by = "hs", all.x = TRUE)
 
+        # NOTE: FCL needs to be defined. If FCL is defined, CPC should be as well
         dat[
-          is.na(cpc_new) & !is.na(fcl_new),
+          !is.na(cpc_new) & !is.na(fcl_new),
           `:=`(
-            cpc = cpc_new,
-            fcl = fcl_new,
-            hs_description = hs_description_new,
-            cpc_description = cpc_description_new
+            cpc             = cpc_new,
+            fcl             = fcl_new,
+            hs_description  = hs_description_new,
+            cpc_description = cpc_description_new,
+            map_src         = "manual"
           )
         ]
 
@@ -1252,13 +1255,19 @@ server <- function(input, output, session) {
         dat[, `__id` := NULL]
         dat[, `__ts` := NULL]
 
-        AddInsertions(changeset, dat_new)
+        AddInsertions(changeset, dat)
 
         Finalise(changeset)
       }
+
+      values$link_msg <- "The link was correctly changed. Updated data will appear after nex plugin run."
     }
   )
 
+  output$confirm_linkchange <-
+    renderUI({
+      p(values$link_msg)
+    })
 
   observeEvent(
     input$changelink$changes$changes[[1]][[1]],
@@ -1639,6 +1648,7 @@ server <- function(input, output, session) {
     hs                    = NA,
     hs6                   = NA,
     choose_correction     = NA,
+    link_msg              = NULL,
     selected              = NA,
     year2correct          = NA
   )
@@ -2221,6 +2231,7 @@ server <- function(input, output, session) {
       values$it_code  <- xxx$measuredItemCPC[idx]
       values$flow     <- xxx$flow[idx]
       values$year     <- xxx$timePointYears[idx]
+      values$link_msg <- NULL
     }
   )
 
