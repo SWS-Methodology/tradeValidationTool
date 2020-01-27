@@ -1279,7 +1279,7 @@ server <- function(input, output, session) {
 
   output$confirm_linkchange <-
     renderUI({
-      style_col <- ifelse(grepl("correct"), "green;", "red;")
+      style_col <- ifelse(grepl("correct", values$link_msg), "green;", "red;")
       p(values$link_msg, style = paste("font-weight: bolder; color:", style_color))
     })
 
