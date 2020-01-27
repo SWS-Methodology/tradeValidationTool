@@ -1036,12 +1036,12 @@ server <- function(input, output, session) {
       if (faosws::CheckDebug()) {
         outList_send <- outList[outlier == TRUE]
 
-        outliers_send[, measuredItemCPC := paste0("'", measuredItemCPC)]
+        outList_send[, measuredItemCPC := paste0("'", measuredItemCPC)]
 
         outList_send_file <-
           tempfile(pattern = "total_trade_outliers_", fileext = ".csv")
 
-        write.csv(outliers_send, outliers_send_file, row.names = FALSE)
+        write.csv(outList_send, outList_send_file, row.names = FALSE)
 
 		user_email <- users$email[name == values$username]
 
