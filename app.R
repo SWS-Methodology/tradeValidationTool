@@ -158,7 +158,22 @@ sws_datatables <-
     do_not_check <- ReadDatatable("ess_trade_exclude_outlier_check")
     stopifnot(nrow(do_not_check) > 0)
 
-    list(outlier_thresholds = outlier_thresholds, do_not_check = do_not_check)
+    codelist_cpc <- GetCodeList("trade", "total_trade_cpc_m49", "measuredItemCPC")
+    stopifnot(nrow(codelist_cpc) > 0)
+
+    codelist_cpc <- codelist_cpc[, .(measuredItemCPC = code, measuredItemCPC_description = description)]
+
+    codelist_elements <- GetCodeList("trade", "total_trade_cpc_m49", "measuredElementTrade")
+    stopifnot(nrow(codelist_elements) > 0)
+
+    codelist_elements <- codelist_elements[nchar(code) == 4, .(measuredElementTrade = code, measuredElementTrade_description = description)]
+
+    list(
+      outlier_thresholds = outlier_thresholds,
+      do_not_check       = do_not_check,
+      codelist_cpc       = codelist_cpc,
+      codelist_elements  = codelist_elements
+    )
   }
 
 send_mail <- function(from = NA, to = NA, subject = NA,
@@ -518,7 +533,7 @@ ui <- function(request) {
            <p>Click on one row to see the plots of quantity/value/unit value and the outliers found (shown with a blue point, only for years >= 2014).</p>
            "),
       DT::dataTableOutput("tot_outliers_tab"),
-      plotOutput("tot_outliers_plot", height = "800px", width = "90%")
+      plotlyOutput("tot_outliers_plot", height = "1000px", width = "90%")
     ),
     tabPanel('Raw data / MAP',
       h1(span("Bilateral"), span("raw", style = "color: red;"), span("data (ONLY 2014-2018)")),
@@ -1034,7 +1049,7 @@ server <- function(input, output, session) {
            Value, flagObservationStatus, flagMethod, meanOld, growth_rate)
         ]
 
-      if (faosws::CheckDebug()) {
+      if ("HOSTNAME" %in% names(Sys.getenv()) && Sys.getenv()[['HOSTNAME']] == "hqlprsws1.hq.un.fao.org") {
         outList[, measuredItemCPC := paste0("'", measuredItemCPC)]
 
         outList_send_file <-
@@ -1059,15 +1074,9 @@ server <- function(input, output, session) {
 
       d <- d[select == TRUE][, select := NULL]
 
-      d[, UV_elem := unique(substr(measuredElementTrade, 4, 4)), by = c("geographicAreaM49", "measuredItemCPC", "flow")]
-
-      # Remove the quantity that does not correspond to UV
-      d <-
-        d[
-          substr(measuredElementTrade, 4, 4) == UV_elem | # the element that corresponds to UV
-            substr(measuredElementTrade, 3, 4) == "22" | # monetary value
-            substr(measuredElementTrade, 3, 3) == "3" # UV
-        ]
+      # Remove the quantity that does not correspond to UV (3 is qty, value, UV)
+      d[, n_missing := sum(is.na(Value)), by = c("geographicAreaM49", "measuredItemCPC", "measuredElementTrade")]
+      d <- d[, .SD[order(n_missing)][1:3], by = c("geographicAreaM49", "measuredItemCPC", "timePointYears", "flow")]
 
       d <-
         d[!grepl("^..[23].$", measuredElementTrade),
@@ -1093,6 +1102,10 @@ server <- function(input, output, session) {
 
       values$dbout_total <- d
 
+      d <- merge(d, sws_datatables$codelist_cpc, by = "measuredItemCPC", all.x = TRUE)
+
+      d <- d[order(-old)]
+
       DT::datatable(d, rownames = FALSE, selection = "single") %>%
         DT::formatCurrency(c('old', 'new', 'min', 'max'), digits = 0, currency = '') %>%
         DT::formatCurrency(c('ratio_new_old', 'ratio_min_old', 'ratio_max_old'), digits = 2, currency = '')
@@ -1100,7 +1113,7 @@ server <- function(input, output, session) {
 
 
   output$tot_outliers_plot <-
-    renderPlot({
+    renderPlotly({
 
       req(input$tot_outliers_tab_rows_selected)
 
@@ -1129,6 +1142,10 @@ server <- function(input, output, session) {
       d <- d[remove == FALSE]
 
       d <- rbind(d, d[grepl("^..3.$", measuredElementTrade)][, .(geographicAreaM49, timePointYears, Value = Value / shift(Value) -1, measuredElementTrade = paste0("GROWTH_", measuredElementTrade))], fill = TRUE)
+
+      d <- merge(d, sws_datatables$codelist_elements, by = "measuredElementTrade", all.x = TRUE)
+
+      d[!is.na(measuredElementTrade_description), measuredElementTrade := measuredElementTrade_description]
 
       ggplot(d, aes(x = timePointYears, group = 1)) +
         geom_line(aes(y = Value), size = 2) +
