@@ -96,6 +96,13 @@ DEFAULT_RATIO_HIGH  <- 4    # four times higher
 DEFAULT_GROWTH_LOW  <- -0.5 # -50%
 DEFAULT_GROWTH_HIGH <- 1    # +100%
 
+# Like saveRDS, setting permissions.
+# (this is because at some point the tool was saving the file
+# with wrong permissions, so now set irrespespective of umask)
+save_rds <- function(data, file) {
+  saveRDS(data, file)
+  Sys.chmod(data, file, mode = '0666', use_umask = FALSE)
+}
 
 # rollavg() is a rolling average function that uses computed averages
 # to generate new values if there are missing values (and FOCB/LOCF).
@@ -1710,12 +1717,12 @@ server <- function(input, output, session) {
         if (!file.exists(values$corrections_file)) {
           dir.create(file.path(corrections_dir, rep_code))
           initial <- readRDS(file.path(corrections_dir, 'corrections_table.rds')) %>% slice(0)
-          saveRDS(initial, file = values$corrections_file)
+          save_rds(initial, file = values$corrections_file)
         }
 
         values$corrections <- readRDS(values$corrections_file)
 
-        saveRDS(values$corrections, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M%S'), '\\1'), values$corrections_file))
+        save_rds(values$corrections, sub('(\\.rds)', paste0('_', format(Sys.time(), '%Y%m%d%H%M%S'), '\\1'), values$corrections_file))
       }
 
     }
@@ -1928,7 +1935,7 @@ server <- function(input, output, session) {
               )
 
             ### XXX SAVECORR
-            saveRDS(values$corrections, values$corrections_file)
+            save_rds(values$corrections, values$corrections_file)
 
             output$corrections_message <-
               renderText(
@@ -2097,7 +2104,7 @@ server <- function(input, output, session) {
           )
 
           ### XXX SAVECORR
-          saveRDS(values$corrections, values$corrections_file)
+          save_rds(values$corrections, values$corrections_file)
 
           output$corrections_message <- renderText(
             paste0(
@@ -2491,10 +2498,10 @@ server <- function(input, output, session) {
       #    )
       #} else {
       #  writeBin(1, lock_name)
-      #  saveRDS(values$corrections, file = values$corrections_file)
+      #  save_rds(values$corrections, file = values$corrections_file)
       #  unlink(lock_name)
       #}
-      saveRDS(values$corrections, file = values$corrections_file)
+      save_rds(values$corrections, file = values$corrections_file)
 
       # Read table, write table, load table.
 
@@ -2753,7 +2760,7 @@ server <- function(input, output, session) {
   #        #)
 
   #        #### XXX SAVECORR
-  #        #saveRDS(values$corrections, values$corrections_file)
+  #        #save_rds(values$corrections, values$corrections_file)
 
   #        #output$corrections_message <- renderText(
   #        #  paste0(
@@ -2827,7 +2834,7 @@ server <- function(input, output, session) {
   #      )
 
   #      ### XXX SAVECORR
-  #      saveRDS(values$corrections, values$corrections_file)
+  #      save_rds(values$corrections, values$corrections_file)
 
   #      output$corrections_message <- renderText(
   #        paste0(
