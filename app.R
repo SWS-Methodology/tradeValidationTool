@@ -101,7 +101,7 @@ DEFAULT_GROWTH_HIGH <- 1    # +100%
 # with wrong permissions, so now set irrespespective of umask)
 save_rds <- function(data, file) {
   saveRDS(data, file)
-  Sys.chmod(data, file, mode = '0666', use_umask = FALSE)
+  Sys.chmod(file, mode = '0666', use_umask = FALSE)
 }
 
 # rollavg() is a rolling average function that uses computed averages
